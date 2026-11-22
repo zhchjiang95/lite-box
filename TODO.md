@@ -23,10 +23,16 @@
   - *技术方案*：Canvas 分块裁剪 + `fflate`
 - [x] **EXIF 信息查看与抹除（`image-exif`）**：解析相机/镜头/光圈快门/ISO/GPS 位置与完整 EXIF/XMP/IPTC/ICC 元数据，提供隐私体检与 JSON 导出，支持 JPEG/PNG 二进制无损段剥离及批量抹除 ZIP 打包
   - *技术方案*：`exifreader` + 纯前端 JPEG/PNG 二进制段无损剥离器 + Canvas 重绘校正方向 + `fflate`
-- [ ] **长图切分 / 滚动截图分页（`image-slice`）**：将超长图片按固定高度或指定比例切成多张图（适合小红书/公众号多图发布）
-- [ ] **圆角与阴影美化 / 截图套壳（`screenshot-beautify`）**：为截图添加 macOS 窗口标题栏、渐变背景、圆角、多层柔和阴影与内边距，一键复制或导出高清宣传图
-- [ ] **SVG 转 PNG/WebP（`svg-to-image`）**：粘贴 SVG 代码或上传 `.svg` 文件，自定义倍数（1x/2x/4x）与尺寸导出位图
-- [ ] **Favicon 图标生成（`favicon-generator`）**：上传一张图一键生成全套 `favicon.ico`（多尺寸合并）、`apple-touch-icon.png`、PWA 图标及 HTML 代码
+- [x] **长图切分 / 滚动截图分页（`image-slice`）**：将超长图片按小红书 3:4 等社媒比例、固定高度、等分页数或手动切线切分为多张图，支持拖拽切线、一键智能吸附空白缝隙避开文字、末页同色补边/合并与 ZIP 打包
+  - *技术方案*：Canvas 2D 行像素梯度方差扫描（智能避字）+ 交互式水平切线编辑 + `fflate`
+- [x] **圆角与阴影美化 / 截图套壳（`screenshot-beautify`）**：为截图添加 macOS 亮/暗窗口栏、浏览器地址栏、磨砂玻璃外框、12 套弥散渐变与颗粒噪点、圆角、三层柔和阴影、内衬留白及 2× 高清导出，支持一键复制与粘贴秒换图
+  - *技术方案*：Canvas 2D 多层阴影与图案噪点渲染 + `createImageBitmap`
+- [x] **SVG 转 PNG/WebP（`svg-to-image`）**：粘贴/实时编辑 SVG 代码或批量上传 `.svg` 文件，支持自动补全 `xmlns`/`viewBox`、`currentColor` 快捷换色、1×–8× 无锯齿倍率或自定义像素、留白背景、DataURL 复制与批量 ZIP 导出
+  - *技术方案*：`DOMParser` 矢量属性注入 + Canvas 2D 高倍光栅化 + `fflate`
+- [x] **Favicon 图标生成（`favicon-generator`）**：上传图片（支持 PNG/SVG/JPG/HEIC）或直接输入文字/Emoji，一键生成多尺寸合并 `favicon.ico`（16/32/48）、`apple-touch-icon.png`、PWA 192/512 图标、`site.webmanifest` 及 HTML `<head>` 引入代码，提供亮/暗浏览器标签与手机桌面实时预览
+  - *技术方案*：Canvas 2D 多尺寸渲染 + 多帧 PNG-in-ICO 二进制编码器 + `fflate`
+- [x] **摄影作品分享框（`photo-frame`）**：自动读取照片 EXIF（相机/镜头/焦距/光圈/快门/ISO/时间），支持上/下/左/右四向画框排版、6 套艺术字体（画廊衬线/手写签名/机械等宽/电影宽字等）、6 种画框主题（徕卡白/暗夜黑/拍立得/弥散毛玻璃/35mm 胶片/无框悬浮）、矢量品牌徽标与照片主色调色点
+  - *技术方案*：`exifreader` + 确定性 K-Means++ 色点提取 + Canvas 2D 四向坐标旋转渲染 + 按需异步艺术字体加载
 
 ---
 

@@ -107,11 +107,36 @@ src/
    │  ├─ types.ts             # 网格预设、构图模式与切片配置类型
    │  ├─ engine.ts            # 统一切分几何计算、单格/批量渲染与 ZIP 打包
    │  └─ index.tsx            # 原图切线拖拽构图 + 朋友圈发图效果双视图界面
-   └─ image-exif/             # EXIF 信息查看与抹除
+   ├─ image-exif/             # EXIF 信息查看与抹除
+   │  ├─ meta.ts              # 工具元数据
+   │  ├─ parser.ts            # 基于 exifreader 的摄影速览、GPS 与隐私体检解析器
+   │  ├─ stripper.ts          # JPEG/PNG 二进制无损元数据剥离器、Canvas 重绘与批量 ZIP 打包
+   │  └─ index.tsx            # 隐私体检、摄影卡片、可搜索元数据表与批量抹除工作台
+   ├─ image-slice/            # 长图切分 / 滚动截图分页
+   │  ├─ meta.ts              # 工具元数据
+   │  ├─ types.ts             # 社媒比例预设、切分模式与末页处理配置
+   │  ├─ engine.ts            # 自动切线计算、行方差智能避字吸附算法与分页 ZIP 打包
+   │  └─ index.tsx            # 长图可拖拽切线编辑画布与分页卡片预览工作台
+   ├─ screenshot-beautify/    # 截图美化套壳
+   │  ├─ meta.ts              # 工具元数据
+   │  ├─ types.ts             # 12 套渐变预设、窗口风格与画幅配置
+   │  ├─ engine.ts            # 多层阴影、macOS/浏览器标题栏、玻璃外框与噪点 Canvas 渲染器
+   │  └─ index.tsx            # 实时美化工作台（含内置示例图与剪贴板秒换图）
+   ├─ svg-to-image/           # SVG 转图片
+   │  ├─ meta.ts              # 工具元数据
+   │  ├─ engine.ts            # SVG 解析补全、矢量高倍无锯齿光栅化、DataURL 与批量 ZIP 打包
+   │  └─ index.tsx            # 实时预览、SVG 代码编辑与多文件批量队列工作台
+   ├─ favicon-generator/      # Favicon 图标生成
+   │  ├─ meta.ts              # 工具元数据
+   │  ├─ types.ts             # 全平台输出规格、渐变预设与配置类型
+   │  ├─ engine.ts            # 多尺寸 PNG/ICO 生成、site.webmanifest/HTML 构建与 ZIP 打包
+   │  └─ index.tsx            # 亮/暗浏览器标签模拟、主屏预览与一键下载工作台
+   └─ photo-frame/            # 摄影作品分享框
       ├─ meta.ts              # 工具元数据
-      ├─ parser.ts            # 基于 exifreader 的摄影速览、GPS 与隐私体检解析器
-      ├─ stripper.ts          # JPEG/PNG 二进制无损元数据剥离器、Canvas 重绘与批量 ZIP 打包
-      └─ index.tsx            # 隐私体检、摄影卡片、可搜索元数据表与批量抹除工作台
+      ├─ types.ts             # 6 套画框主题、6 套艺术字体、品牌徽标与四向布局配置
+      ├─ fonts.ts             # 按需异步加载精选艺术字体（离线自动优雅降级）
+      ├─ engine.ts            # 四向画框渲染、矢量品牌徽标、弥散毛玻璃/胶片齿孔与示例图生成
+      └─ index.tsx            # 自动解析 EXIF + 实时画框定制工作台
 ```
 
 ---
