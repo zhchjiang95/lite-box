@@ -63,7 +63,7 @@ src/
 │  └─ utils.ts                # 类名合并、字节格式化等
 ├─ pages/                     # 首页、分类页、收藏与最近、工具详情容器页、404
 ├─ registry/
-│  ├─ categories.ts           # 8 大工具分类定义与渐变色配置
+│  ├─ categories.ts           # 9 大工具分类定义与渐变色配置（含 Word 工具）
 │  ├─ index.ts                # 核心：自动扫描 src/tools/*/meta.ts 生成工具注册表
 │  ├─ planned.ts              # “即将上线”工具预览列表
 │  └─ types.ts                # 工具与分类类型定义
@@ -154,11 +154,37 @@ src/
    │  ├─ engine.ts            # 高倍渲染单页、批量打包 ZIP 与纵向超清长图合成引擎
    │  ├─ PageCard.tsx         # IntersectionObserver 懒渲染页面卡片（勾选/复制/下载/放大）
    │  └─ index.tsx            # PDF 转图工作台与高清预览弹窗
-   └─ pdf-watermark/          # PDF 加水印与页码
+   ├─ pdf-watermark/          # PDF 加水印与页码
+   │  ├─ meta.ts              # 工具元数据
+   │  ├─ types.ts             # 水印模板、九宫格锚点与中英文页码配置类型
+   │  ├─ engine.ts            # 3× 超清中文/Logo 透明印章嵌入、无损平铺/页码写入与批量 ZIP
+   │  └─ index.tsx            # 实时翻页叠加预览与多文档批量工作台
+   ├─ id-card-print/          # 身份证 / 证件正反面 A4 排版打印
+   │  ├─ meta.ts              # 工具元数据
+   │  ├─ types.ts             # 国标证件尺寸预设、A4 排版模式与防盗水印配置类型
+   │  ├─ engine.ts            # 单应性四点透视拉直、扫描增白/黑白滤镜、1:1 A4 PDF 导出与直接打印
+   │  ├─ CropEditorModal.tsx  # 交互式比例裁剪 & 四点透视拉直弹窗（带 3× 十字放大镜）
+   │  └─ index.tsx            # 双面证件上传、1:1 A4 实时预览与一键打印工作台
+   ├─ text-extract/           # 正则提取与批量替换
+   │  ├─ meta.ts              # 工具元数据
+   │  ├─ types.ts             # 10 套常用提取预设、7 套脱敏/清洗替换预设与示例文本
+   │  ├─ engine.ts            # 安全正则提取、捕获组模板、去重排序、多规则流水线替换与行级 Diff
+   │  └─ index.tsx            # 原文高亮预览、命中明细表与批量替换对比工作台
+   ├─ rmb-upper/              # 数字转人民币大写
+   │  ├─ meta.ts              # 工具元数据
+   │  ├─ engine.ts            # 纯字符串/BigInt 财务规范大小写互转、支票数位格与精确求和引擎
+   │  └─ index.tsx            # 单笔转换、支票数位对照、大写反查校验、批量求和与手写速查表
+   ├─ random-picker/          # 随机抽签与转盘决策
+   │  ├─ meta.ts              # 工具元数据
+   │  ├─ types.ts             # 场景预设、权重解析与密码学安全随机抽样算法
+   │  ├─ sound.ts             # Web Audio 拨片/胜利音效合成与舞台内置礼花彩带粒子引擎
+   │  ├─ WheelCanvas.tsx      # 高清 Canvas 幸运大转盘（跑马灯珠、弹性拨片、权重扇区）
+   │  └─ index.tsx            # 大转盘/滚动点名双模式与全屏沉浸舞台工作台
+   └─ blackboard/             # 演示黑板 / 手绘白板
       ├─ meta.ts              # 工具元数据
-      ├─ types.ts             # 水印模板、九宫格锚点与中英文页码配置类型
-      ├─ engine.ts            # 3× 超清中文/Logo 透明印章嵌入、无损平铺/页码写入与批量 ZIP
-      └─ index.tsx            # 实时翻页叠加预览与多文档批量工作台
+      ├─ types.ts             # 4 套板面主题、辅助底纹与 1920×1080 逻辑元素模型
+      ├─ renderer.ts          # 贝塞尔手绘、矢量图形、多行文字、激光笔拖尾与高清 PNG 导出引擎
+      └─ index.tsx            # 单页全宽画板工作台与 PPT 式全屏沉浸放映模式
 ```
 
 ---

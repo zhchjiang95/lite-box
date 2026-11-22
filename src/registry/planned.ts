@@ -10,11 +10,19 @@ import {
   LetterText,
   Palette,
   Film,
+  FileCode2,
+  FileDown,
+  ImageDown,
+  Minimize2,
 } from 'lucide-react'
 import type { PlannedTool } from './types'
 
 /** 规划中的工具（首页以“即将上线”展示，实现后从此处移除即可）。完整清单见 TODO.md */
 export const plannedTools: PlannedTool[] = [
+  { name: 'Markdown 转 Word', category: 'word', icon: FileDown, description: 'AI 生成的 Markdown 一键转规范 .docx' },
+  { name: 'Word 转 Markdown', category: 'word', icon: FileCode2, description: '保留标题、表格与图片转为干净 MD' },
+  { name: 'Word 图片无损提取', category: 'word', icon: ImageDown, description: '一键提取 .docx 中全部高清原图' },
+  { name: 'Word 文档瘦身压缩', category: 'word', icon: Minimize2, description: '无损排版，智能压缩内嵌大图减体积' },
   { name: '字数统计', category: 'text', icon: LetterText, description: '字符、词数、行数、阅读时长' },
   { name: '文本对比', category: 'text', icon: GitCompare, description: '逐行 / 逐字高亮差异' },
   { name: 'Base64 编解码', category: 'encode', icon: Binary, description: '文本与文件 Base64 互转' },

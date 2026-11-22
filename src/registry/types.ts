@@ -2,7 +2,7 @@ import type { LucideIcon } from 'lucide-react'
 import type { ComponentType } from 'react'
 
 /** 工具分类 ID */
-export type CategoryId = 'image' | 'pdf' | 'text' | 'encode' | 'dev' | 'generate' | 'media' | 'life'
+export type CategoryId = 'image' | 'pdf' | 'word' | 'text' | 'encode' | 'dev' | 'generate' | 'media' | 'life'
 
 /** 分类定义 */
 export interface Category {
