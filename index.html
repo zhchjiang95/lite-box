@@ -2,26 +2,111 @@
 <html lang="zh-CN">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <meta name="description" content="轻匣 · 纯浏览器本地处理的在线工具箱：图片拼接、压缩、格式转换等，文件不上传，快速安全。" />
-    <meta name="theme-color" content="#0b0b12" />
-    <title>轻匣 · 本地工具箱</title>
+    <meta name="renderer" content="webkit" />
+    <meta name="format-detection" content="telephone=no, email=no" />
+    <meta name="color-scheme" content="light dark" />
+
+    <!-- 核心标题与 SEO 元信息 -->
+    <title>轻匣（LiteBox）· 纯本地在线工具箱 — 图片、PDF、文本与日常实用工具</title>
+    <meta
+      name="description"
+      content="轻匣（LiteBox）是一款 100% 浏览器本地处理的在线工具箱，提供图片拼接压缩转换、HEIC 转图、摄影画框、PDF 合并拆分水印、身份证 A4 排版打印、正则提取替换、人民币大写、全屏抽签与演示黑板等工具。文件不上传服务器，隐私安全，支持安装到桌面与离线使用。"
+    />
+    <meta
+      name="keywords"
+      content="轻匣,LiteBox,在线工具箱,本地工具箱,纯前端工具,图片压缩,图片拼接,HEIC转换,摄影画框,PDF合并拆分,PDF转图片,PDF加水印,身份证A4打印,正则提取,人民币大写,随机抽签,演示黑板,PWA离线应用"
+    />
+    <meta name="author" content="轻匣 LiteBox" />
+    <meta name="application-name" content="轻匣" />
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1" />
+    <!-- 部署正式域名后，建议取消注释并填写你的完整站点地址 -->
+    <!-- <link rel="canonical" href="https://your-domain.com/" /> -->
+
+    <!-- 状态栏与浏览器主题色（自动适配亮/暗模式） -->
+    <meta name="theme-color" content="#f8fafc" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#0b0b12" media="(prefers-color-scheme: dark)" />
+    <meta name="msapplication-TileColor" content="#0b0b12" />
+
+    <!-- 多端图标：现代浏览器 SVG / 传统 ICO / Android 与桌面 PWA PNG / iOS 添加到主屏幕 -->
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" href="/favicon.ico" sizes="48x48" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/pwa-192x192.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <link rel="mask-icon" href="/favicon.svg" color="#8b5cf6" />
+
+    <!-- iOS Safari / Android Chrome / 桌面端“添加到主屏幕 / 安装为应用”独立窗口支持 -->
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="轻匣" />
+
+    <!-- Open Graph（微信、飞书、钉钉、Telegram、Facebook 链接分享预览卡片） -->
+    <meta property="og:type" content="website" />
+    <meta property="og:locale" content="zh_CN" />
+    <meta property="og:site_name" content="轻匣 LiteBox" />
+    <meta property="og:title" content="轻匣（LiteBox）· 纯本地在线百宝工具箱" />
+    <meta
+      property="og:description"
+      content="图片处理、PDF 工具、身份证 A4 排版打印、正则提取、人民币大写、全屏抽签与演示黑板……100% 浏览器本地完成，文件不上传、打开即用、可安装到桌面离线使用。"
+    />
+    <!-- 部署正式域名后，可将 og:url 与 og:image 改为 https://your-domain.com/... 绝对路径以获得最佳社交抓图效果 -->
+    <meta property="og:image" content="/og-image.png" />
+    <meta property="og:image:type" content="image/png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="轻匣 LiteBox — 浏览器里的纯本地百宝工具箱" />
+
+    <!-- Twitter / X 分享卡片 -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="轻匣（LiteBox）· 纯本地在线百宝工具箱" />
+    <meta
+      name="twitter:description"
+      content="100% 浏览器本地处理，文件不上传，支持安装为桌面/手机应用与离线使用。"
+    />
+    <meta name="twitter:image" content="/og-image.png" />
+
+    <!-- 结构化数据（JSON-LD），助力搜索引擎识别为免费离线 Web 应用 -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "轻匣（LiteBox）",
+        "alternateName": "LiteBox 本地工具箱",
+        "description": "100% 浏览器本地处理的在线百宝工具箱，覆盖图片处理、PDF 工具、文本提取替换与生活实用工具，文件不上传，支持安装到桌面与离线使用。",
+        "applicationCategory": "UtilitiesApplication",
+        "operatingSystem": "Any",
+        "browserRequirements": "Requires modern browser with HTML5 Canvas and WebAssembly support",
+        "inLanguage": "zh-CN",
+        "isAccessibleForFree": true,
+        "offers": {
+          "@type": "Offer",
+          "price": "0",
+          "priceCurrency": "CNY"
+        }
+      }
+    </script>
+
+    <!-- 首屏前同步应用用户主题与状态栏颜色，避免亮暗闪烁 -->
     <script>
-      // 首屏前同步应用主题，避免闪烁
       ;(function () {
         try {
           var s = JSON.parse(localStorage.getItem('litebox-settings') || '{}')
           var t = (s.state && s.state.theme) || 'system'
           var dark = t === 'dark' || (t === 'system' && matchMedia('(prefers-color-scheme: dark)').matches)
           document.documentElement.classList.toggle('dark', dark)
+          if (t === 'dark' || t === 'light') {
+            var color = dark ? '#0b0b12' : '#f8fafc'
+            var metas = document.querySelectorAll('meta[name="theme-color"]')
+            for (var i = 0; i < metas.length; i++) metas[i].setAttribute('content', color)
+          }
         } catch (e) {}
       })()
     </script>
   </head>
   <body>
+    <noscript>轻匣（LiteBox）需要启用 JavaScript 才能在浏览器本地运行所有工具，请在浏览器设置中开启 JavaScript。</noscript>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
-

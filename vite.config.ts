@@ -9,22 +9,65 @@ export default defineConfig({
   plugins: [
     react(),
     tailwindcss(),
-    // PWA：预缓存应用外壳，支持离线使用与“安装到桌面”
+    // PWA：预缓存应用外壳，支持离线使用与“安装到桌面 / 添加到主屏幕”
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.svg'],
+      includeAssets: [
+        'favicon.svg',
+        'favicon.ico',
+        'apple-touch-icon.png',
+        'pwa-192x192.png',
+        'pwa-512x512.png',
+        'pwa-maskable-512x512.png',
+        'og-image.png',
+        'robots.txt',
+      ],
       manifest: {
+        id: '/',
         name: '轻匣 · 本地工具箱',
         short_name: '轻匣',
-        description: '纯浏览器本地处理的在线工具箱，文件不上传，快速、安全、可离线。',
+        description: '100% 浏览器本地处理的在线百宝工具箱，文件不上传，快速、安全、可离线。',
         lang: 'zh-CN',
+        dir: 'ltr',
         theme_color: '#0b0b12',
         background_color: '#0b0b12',
         display: 'standalone',
-        start_url: '/',
+        display_override: ['window-controls-overlay', 'standalone'],
+        orientation: 'any',
+        scope: '/',
+        start_url: '/?source=pwa',
+        categories: ['utilities', 'productivity', 'photo'],
         icons: [
+          { src: 'pwa-192x192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
+          { src: 'pwa-512x512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
+          { src: 'pwa-maskable-512x512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
           { src: 'favicon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any' },
-          { src: 'favicon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'maskable' },
+        ],
+        shortcuts: [
+          {
+            name: '身份证 A4 打印',
+            short_name: '身份证打印',
+            url: '/tools/id-card-print',
+            icons: [{ src: 'pwa-192x192.png', sizes: '192x192', type: 'image/png' }],
+          },
+          {
+            name: '图片压缩',
+            short_name: '图片压缩',
+            url: '/tools/image-compress',
+            icons: [{ src: 'pwa-192x192.png', sizes: '192x192', type: 'image/png' }],
+          },
+          {
+            name: 'PDF 合并与拆分',
+            short_name: 'PDF 合并拆分',
+            url: '/tools/pdf-merge-split',
+            icons: [{ src: 'pwa-192x192.png', sizes: '192x192', type: 'image/png' }],
+          },
+          {
+            name: '演示黑板',
+            short_name: '演示黑板',
+            url: '/tools/blackboard',
+            icons: [{ src: 'pwa-192x192.png', sizes: '192x192', type: 'image/png' }],
+          },
         ],
       },
       workbox: {

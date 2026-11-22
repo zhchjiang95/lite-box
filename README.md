@@ -248,4 +248,7 @@ export default function ImageCompress() {
    - 在 `image-compress` 中，批量压缩运行在按需创建的 Web Worker 并发池（`OffscreenCanvas` + `upng-js` 调色板量化）中，主线程交互保持 60fps；PNG 压缩在 `<100%` 画质时自动进行色彩量化避免原生 PNG 越压越大，同时支持“防反向增大”自动保留更小原图，批量打包采用 `fflate` 零级存储秒级生成 ZIP。
 3. **无障碍与动效降级**：
    - 全局配置了 `<MotionConfig reducedMotion="user">` 与 CSS `@media (prefers-reduced-motion: reduce)`，当用户系统开启“减弱动态效果”时自动关闭复杂位移与过渡动画。
+4. **SEO、社交分享与桌面/手机 PWA 应用安装**：
+   - 已内置多端图标资源（`favicon.svg`、`favicon.ico`、`apple-touch-icon.png`、`pwa-192x192.png`、`pwa-512x512.png`、`pwa-maskable-512x512.png`）与 1200×630 Open Graph 分享图（`og-image.png`），并在 `index.html`、`vite.config.ts` 中完善了 SEO Meta、JSON-LD `WebApplication`、双主题 `theme-color` 及 PWA 快捷方式（`shortcuts`）。
+   - **正式域名上线时建议检查**：确保站点通过 **HTTPS** 访问（PWA 安装的硬性前提），并在 `index.html` 中取消注释 `<link rel="canonical">`、将 `og:image`/`twitter:image` 改为完整 `https://你的域名/og-image.png`，按需补充 `public/robots.txt` 中的 `Sitemap` 地址。
 

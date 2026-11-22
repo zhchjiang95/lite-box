@@ -39,6 +39,14 @@ function ToolSkeleton() {
   )
 }
 
+const DEFAULT_TITLE = '轻匣（LiteBox）· 纯本地在线工具箱 — 图片、PDF、文本与日常实用工具'
+const DEFAULT_DESC =
+  '轻匣（LiteBox）是一款 100% 浏览器本地处理的在线工具箱，提供图片拼接压缩转换、HEIC 转图、摄影画框、PDF 合并拆分水印、身份证 A4 排版打印、正则提取替换、人民币大写、全屏抽签与演示黑板等工具。文件不上传服务器，隐私安全，支持安装到桌面与离线使用。'
+
+function setMetaContent(selector: string, content: string) {
+  document.querySelector(selector)?.setAttribute('content', content)
+}
+
 /** 工具详情页 */
 export default function ToolPage() {
   const { id = '' } = useParams()
@@ -50,10 +58,18 @@ export default function ToolPage() {
   useEffect(() => {
     if (tool) {
       addRecent(tool.id)
-      document.title = `${tool.name} · 轻匣`
+      const nextTitle = `${tool.name} · 轻匣（LiteBox）`
+      const nextDesc = `${tool.description} — 100% 浏览器本地处理，文件不上传服务器。`
+      document.title = nextTitle
+      setMetaContent('meta[name="description"]', nextDesc)
+      setMetaContent('meta[property="og:title"]', nextTitle)
+      setMetaContent('meta[property="og:description"]', nextDesc)
     }
     return () => {
-      document.title = '轻匣 · 本地工具箱'
+      document.title = DEFAULT_TITLE
+      setMetaContent('meta[name="description"]', DEFAULT_DESC)
+      setMetaContent('meta[property="og:title"]', '轻匣（LiteBox）· 纯本地在线百宝工具箱')
+      setMetaContent('meta[property="og:description"]', DEFAULT_DESC)
     }
   }, [tool, addRecent])
 
