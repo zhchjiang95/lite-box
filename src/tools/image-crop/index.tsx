@@ -30,6 +30,7 @@ import { Segmented } from '@/components/ui/segmented'
 import { Slider } from '@/components/ui/slider'
 import { ColorPicker, Field, Switch } from '@/components/ui/field'
 import { copyImageToClipboard, downloadBlob, timestampName } from '@/lib/file'
+import { IMAGE_ACCEPT, decodeImageFile, isImageLike } from '@/lib/image'
 import { cn, formatBytes, uid } from '@/lib/utils'
 import { CropCanvas } from './CropCanvas'
 import {
@@ -125,28 +126,30 @@ export default function ImageCrop() {
   const cropPxW = Math.max(1, Math.round(crop.w * singleBounds.width))
   const cropPxH = Math.max(1, Math.round(crop.h * singleBounds.height))
 
-  /** 载入单张图片进入精细裁剪 */
+  /** 载入单张图片进入精细裁剪（支持普通位图与 iPhone HEIC / HEIF） */
   const loadSingleFile = useCallback(async (file: File) => {
     try {
-      const bitmap = await createImageBitmap(file)
+      const decoded = await decodeImageFile(file)
+      // 精细裁剪直接基于 ImageBitmap 渲染，释放多余的 previewUrl
+      URL.revokeObjectURL(decoded.previewUrl)
       singleRef.current?.bitmap.close()
       setSingle({
         file,
         name: file.name || '粘贴的图片',
         size: file.size,
-        bitmap,
-        width: bitmap.width,
-        height: bitmap.height,
+        bitmap: decoded.bitmap,
+        width: decoded.width,
+        height: decoded.height,
       })
       setTransform(defaultTransform)
       setPresetId('free')
       setCrop({ x: 0, y: 0, w: 1, h: 1 })
       setCircleMask(false)
       setCustomOutput(false)
-      setOutW(bitmap.width)
-      setOutH(bitmap.height)
-    } catch {
-      toast.error('无法读取该图片，请检查文件格式')
+      setOutW(decoded.width)
+      setOutH(decoded.height)
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : '无法读取该图片，请检查文件格式')
     }
   }, [])
 
@@ -322,7 +325,7 @@ export default function ImageCrop() {
 
   const addBatchFiles = useCallback(
     async (files: File[]) => {
-      const valid = files.filter((f) => f.type.startsWith('image/'))
+      const valid = files.filter(isImageLike)
       if (!valid.length) {
         toast.error('请选择有效的图片文件')
         return
@@ -330,15 +333,15 @@ export default function ImageCrop() {
       const ver = batchVerRef.current
       const loaded = await Promise.allSettled(
         valid.map(async (file): Promise<{ item: BatchItem; bmp: ImageBitmap }> => {
-          const bmp = await createImageBitmap(file)
+          const decoded = await decodeImageFile(file)
           return {
-            bmp,
+            bmp: decoded.bitmap,
             item: {
               id: uid(),
               file,
-              url: URL.createObjectURL(file),
-              width: bmp.width,
-              height: bmp.height,
+              url: decoded.previewUrl,
+              width: decoded.width,
+              height: decoded.height,
               status: 'processing',
               version: ver,
             },
@@ -455,11 +458,11 @@ export default function ImageCrop() {
           {modeBar}
           <div className="space-y-6">
             <FileDropzone
-              accept="image/*"
+              accept={IMAGE_ACCEPT}
               multiple
               onFiles={handleDropFiles}
               title="拖放图片到这里开始裁剪（拖入多张自动进入批量缩放）"
-              hint="支持 JPG / PNG / WebP / GIF / AVIF，也可以直接 Ctrl / ⌘ + V 粘贴"
+              hint="支持 JPG / PNG / WebP / HEIC / AVIF，也可以直接 Ctrl / ⌘ + V 粘贴"
             />
             <div className="grid gap-3 sm:grid-cols-3">
               {[
@@ -782,7 +785,7 @@ export default function ImageCrop() {
                   <input
                     type="file"
                     hidden
-                    accept="image/*"
+                    accept={IMAGE_ACCEPT}
                     onChange={(e) => {
                       const f = e.target.files?.[0]
                       if (f) void loadSingleFile(f)
@@ -817,7 +820,7 @@ export default function ImageCrop() {
       <div>
         {modeBar}
         <FileDropzone
-          accept="image/*"
+          accept={IMAGE_ACCEPT}
           multiple
           onFiles={addBatchFiles}
           title="拖放多张图片到这里，一键批量缩放"
@@ -1147,7 +1150,7 @@ export default function ImageCrop() {
             </AnimatePresence>
           </div>
 
-          <FileDropzone compact accept="image/*" onFiles={addBatchFiles} title="继续添加图片进行批量缩放" />
+          <FileDropzone compact accept={IMAGE_ACCEPT} onFiles={addBatchFiles} title="继续添加图片进行批量缩放" />
         </div>
       </ToolShell>
     </div>

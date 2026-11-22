@@ -57,6 +57,8 @@ export interface CompressResult {
 export interface CompressItem {
   id: string
   file: File
+  /** 送入 Worker 压缩的标准图片文件（HEIC 照片预解码为 PNG 后缓存于此） */
+  workFile: File
   originalUrl: string
   originalWidth: number
   originalHeight: number

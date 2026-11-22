@@ -29,6 +29,18 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,png,woff2,wasm}'],
+        // heic-to WASM 解码器体积较大（>3MB），排除首屏预缓存，改用运行时按需缓存
+        globIgnores: ['**/heic-to-*.js'],
+        runtimeCaching: [
+          {
+            urlPattern: /\/assets\/heic-to-.*\.js$/,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'heic-decoder-cache',
+              expiration: { maxEntries: 2, maxAgeSeconds: 60 * 60 * 24 * 30 },
+            },
+          },
+        ],
         navigateFallback: '/index.html',
       },
     }),

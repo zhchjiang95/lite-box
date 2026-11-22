@@ -1,6 +1,4 @@
 import {
-  Stamp,
-  Pipette,
   FileStack,
   FileImage,
   Hash,
@@ -19,8 +17,6 @@ import type { PlannedTool } from './types'
 
 /** 规划中的工具（首页以“即将上线”展示，实现后从此处移除即可）。完整清单见 TODO.md */
 export const plannedTools: PlannedTool[] = [
-  { name: '图片加水印', category: 'image', icon: Stamp, description: '文字 / 图片水印，平铺或定位' },
-  { name: '图片取色', category: 'image', icon: Pipette, description: '提取主色调与任意像素颜色' },
   { name: 'PDF 合并拆分', category: 'pdf', icon: FileStack, description: '多个 PDF 合并，按页拆分' },
   { name: '图片转 PDF', category: 'pdf', icon: FileImage, description: '多张图片一键生成 PDF' },
   { name: '字数统计', category: 'text', icon: LetterText, description: '字符、词数、行数、阅读时长' },

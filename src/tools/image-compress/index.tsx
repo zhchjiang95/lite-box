@@ -23,6 +23,7 @@ import { Segmented } from '@/components/ui/segmented'
 import { Slider } from '@/components/ui/slider'
 import { ColorPicker, Field, Switch } from '@/components/ui/field'
 import { copyImageToClipboard, downloadBlob, timestampName } from '@/lib/file'
+import { IMAGE_ACCEPT, decodeHeicToPngFile, isHeicLike, isImageLike } from '@/lib/image'
 import { cn, formatBytes, uid } from '@/lib/utils'
 import { CompareView } from './CompareView'
 import { compressPool, detectAvifSupport, packCompressedZip, readImageDimensions } from './engine'
@@ -119,16 +120,16 @@ export default function ImageCompress() {
       const nextVer = ++versionRef.current
       const snapshot = itemsRef.current
       setItems((prev) => prev.map((it) => ({ ...it, status: 'processing', version: nextVer })))
-      snapshot.forEach((it) => runCompressOne(it.id, it.file, opts, nextVer))
+      snapshot.forEach((it) => runCompressOne(it.id, it.workFile, opts, nextVer))
     }, 180)
 
     return () => window.clearTimeout(timer)
   }, [opts, runCompressOne])
 
-  /** 添加图片并立即入队压缩 */
+  /** 添加图片并立即入队压缩（支持普通位图与 iPhone 15/16 HEIC 照片） */
   const addFiles = useCallback(
     async (files: File[]) => {
-      const valid = files.filter((f) => f.type.startsWith('image/'))
+      const valid = files.filter(isImageLike)
       if (!valid.length) {
         toast.error('请选择有效的图片文件')
         return
@@ -136,13 +137,26 @@ export default function ImageCompress() {
       const ver = versionRef.current
       const loaded = await Promise.allSettled(
         valid.map(async (file): Promise<CompressItem> => {
-          const { width, height } = await readImageDimensions(file)
+          let workFile = file
+          let dims: { width: number; height: number }
+          if (isHeicLike(file)) {
+            workFile = await decodeHeicToPngFile(file)
+            dims = await readImageDimensions(workFile)
+          } else {
+            try {
+              dims = await readImageDimensions(file)
+            } catch {
+              workFile = await decodeHeicToPngFile(file)
+              dims = await readImageDimensions(workFile)
+            }
+          }
           return {
             id: uid(),
             file,
-            originalUrl: URL.createObjectURL(file),
-            originalWidth: width,
-            originalHeight: height,
+            workFile,
+            originalUrl: URL.createObjectURL(workFile),
+            originalWidth: dims.width,
+            originalHeight: dims.height,
             status: 'processing',
             version: ver,
           }
@@ -157,7 +171,7 @@ export default function ImageCompress() {
 
       setItems((prev) => [...prev, ...ok])
       setSelectedId((prev) => prev ?? ok[0].id)
-      ok.forEach((it) => runCompressOne(it.id, it.file, optsRef.current, ver))
+      ok.forEach((it) => runCompressOne(it.id, it.workFile, optsRef.current, ver))
     },
     [runCompressOne],
   )
@@ -266,10 +280,10 @@ export default function ImageCompress() {
     return (
       <div className="space-y-6">
         <FileDropzone
-          accept="image/*"
+          accept={IMAGE_ACCEPT}
           onFiles={addFiles}
           title="拖放图片到这里，支持批量压缩"
-          hint="支持 JPG / PNG / WebP / AVIF，可直接 Ctrl / ⌘ + V 粘贴，全程浏览器本地处理"
+          hint="支持 JPG / PNG / WebP / AVIF / HEIC，可直接 Ctrl / ⌘ + V 粘贴，全程浏览器本地处理"
         />
         <div className="grid gap-3 sm:grid-cols-3">
           {[
@@ -673,7 +687,7 @@ export default function ImageCompress() {
             </AnimatePresence>
           </div>
 
-          <FileDropzone compact accept="image/*" onFiles={addFiles} title="继续添加图片（支持拖放或 Ctrl/⌘ + V 粘贴）" />
+          <FileDropzone compact accept={IMAGE_ACCEPT} onFiles={addFiles} title="继续添加图片（支持拖放或 Ctrl/⌘ + V 粘贴）" />
         </div>
       </div>
     </ToolShell>

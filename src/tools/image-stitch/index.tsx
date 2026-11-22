@@ -24,6 +24,7 @@ import { Segmented } from '@/components/ui/segmented'
 import { Slider } from '@/components/ui/slider'
 import { ColorPicker, Field, Switch } from '@/components/ui/field'
 import { canvasToBlob, copyImageToClipboard, downloadBlob, timestampName } from '@/lib/file'
+import { IMAGE_ACCEPT, decodeImageFile, isImageLike } from '@/lib/image'
 import { cn, formatBytes, uid } from '@/lib/utils'
 import {
   computeLayout,
@@ -79,21 +80,23 @@ export default function ImageStitch() {
     [],
   )
 
-  /** 添加图片 */
+  /** 添加图片（支持普通位图与 iPhone HEIC / HEIF） */
   const addFiles = useCallback(async (files: File[]) => {
+    const valid = files.filter(isImageLike)
+    if (!valid.length) return
     setLoading(true)
     const results = await Promise.allSettled(
-      files.map(async (file) => {
-        const bitmap = await createImageBitmap(file)
+      valid.map(async (file): Promise<Item> => {
+        const decoded = await decodeImageFile(file)
         return {
           id: uid(),
           name: file.name || '粘贴的图片',
           size: file.size,
-          url: URL.createObjectURL(file),
-          bitmap,
-          width: bitmap.width,
-          height: bitmap.height,
-        } satisfies Item
+          url: decoded.previewUrl,
+          bitmap: decoded.bitmap,
+          width: decoded.width,
+          height: decoded.height,
+        }
       }),
     )
     const ok = results.filter((r): r is PromiseFulfilledResult<Item> => r.status === 'fulfilled').map((r) => r.value)
@@ -184,10 +187,10 @@ export default function ImageStitch() {
     return (
       <div className="space-y-6">
         <FileDropzone
-          accept="image/*"
+          accept={IMAGE_ACCEPT}
           onFiles={addFiles}
           title={loading ? '正在读取图片…' : '拖放多张图片到这里，或点击选择'}
-          hint="支持 JPG / PNG / WebP / GIF / AVIF 等，也可以直接 Ctrl / ⌘ + V 粘贴截图"
+          hint="支持 JPG / PNG / WebP / HEIC / AVIF 等，也可以直接 Ctrl / ⌘ + V 粘贴截图"
         />
         <div className="grid gap-3 sm:grid-cols-3">
           {[
@@ -235,7 +238,7 @@ export default function ImageStitch() {
             ))}
           </AnimatePresence>
         </Reorder.Group>
-        <FileDropzone compact accept="image/*" onFiles={addFiles} title={loading ? '读取中…' : '继续添加图片'} pasteable />
+        <FileDropzone compact accept={IMAGE_ACCEPT} onFiles={addFiles} title={loading ? '读取中…' : '继续添加图片'} pasteable />
       </Field>
 
       <Field label="拼接方式">

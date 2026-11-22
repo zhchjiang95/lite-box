@@ -11,18 +11,18 @@
 - [x] **图片拼接（`image-stitch`）**：横向、纵向、宫格拼接，支持拖拽排序、间距、外边距、圆角、背景色、统一宽/高、对齐方式与多格式导出
 - [x] **图片压缩（`image-compress`）**：批量压缩 JPG / PNG / WebP / AVIF，支持画质滑块、PNG 智能色彩量化、最大边长限制、前后体积与画质对比（Before/After 滑动条 + 4 倍放大镜）、一键打包 ZIP 下载
   - *技术方案*：Web Worker 并发池 + `OffscreenCanvas` + `upng-js`（PNG 调色板量化）+ `fflate`（零级极速 ZIP 打包）
-- [x] **图片格式转换（`image-convert`）**：PNG、JPG、WebP、AVIF、BMP、ICO 批量互转，支持 HEIC/HEIF 与 SVG 直转、多尺寸 ICO 封装、尺寸倍率/最大边限制及一键 ZIP 打包
-  - *技术方案*：`createImageBitmap` + `OffscreenCanvas` + 按需懒加载 `heic2any` + 纯前端 24-bit BMP / 多尺寸 ICO 二进制编码器 + `fflate`
+- [x] **图片格式转换（`image-convert`）**：PNG、JPG、WebP、AVIF、BMP、ICO 批量互转，支持 iPhone 15/16 HEIC/HEIF 与 SVG 直转、多尺寸 ICO 封装、尺寸倍率/最大边限制及一键 ZIP 打包
+  - *技术方案*：`createImageBitmap` + `OffscreenCanvas` + 全站统一按需懒加载 `heic-to`（新版 `libheif` WASM）+ 纯前端 24-bit BMP / 多尺寸 ICO 二进制编码器 + `fflate`
 - [x] **图片裁剪与缩放（`image-crop`）**：自由比例或预设比例（1:1、4:3、16:9、一寸/二寸/护照证件照标准尺寸）交互式裁剪、圆形头像裁切、90°/±45° 旋转翻转、自定义输出像素，以及多图按百分比/固定宽/高/指定尺寸批量缩放与 ZIP 打包
   - *技术方案*：纯前端交互式 `CropCanvas`（8 方向拖拽 + 锁比例约束）+ 单次 Canvas 2D 变换矩阵渲染 + `fflate`
-- [ ] **图片加水印（`image-watermark`）**：支持文字水印与图片 Logo 水印，支持全屏斜向平铺（防盗图证件水印）或九宫格定位，可调透明度、字号、旋转角度、间距
-  - *技术方案*：Canvas 2D 平铺矩阵计算与混色
-- [ ] **图片取色与调色板（`image-palette`）**：点击放大镜取任意像素色值（HEX / RGB / HSL / OKLCH），自动提取图片主色调与配色方案
-  - *技术方案*：`EyeDropper API` + Canvas `getImageData` 颜色量化（MMCQ / K-Means）
-- [ ] **九宫格切图（`image-split`）**：将单张图片切分为 3×3 九宫格、2×2 四宫格或自定义行×列，适用于朋友圈/微博发图，一键打包下载
+- [x] **图片加水印（`image-watermark`）**：支持多行文字水印与透明图片 Logo 水印，全屏错行斜向平铺（证件防盗水印）或九宫格 + 画布拖拽定位，可调透明度、自适应字号、旋转角度、间距、混合模式，支持多图批量加水印与 ZIP 打包
+  - *技术方案*：Canvas 2D 对角线覆盖平铺矩阵与混合模式渲染 + `fflate`
+- [x] **图片取色与调色板（`image-palette`）**：11×11 像素级放大镜与原生 EyeDropper 屏幕吸管取色（HEX / RGB / HSL / OKLCH / CMYK + WCAG 对比度），K-Means++ 自动提取主色调与占比、生成衍生配色，支持导出 CSS/JSON 及高清色卡海报 PNG
+  - *技术方案*：`EyeDropper API` + `Canvas getImageData` 像素放大镜 + 确定性 K-Means++ 颜色量化
+- [x] **九宫格切图（`image-split`）**：将单张图片切分为 3×3 九宫格、2×2 四宫格、横/竖三连或任意 1–8 行×列，支持朋友圈 1:1 正方形拖拽取景 / 自动补边、缝隙补偿、圆角、发图效果模拟与一键打包 ZIP 下载
   - *技术方案*：Canvas 分块裁剪 + `fflate`
-- [ ] **EXIF 信息查看与抹除（`image-exif`）**：读取照片拍摄设备、快门、光圈、GPS 位置等元数据，并支持一键清除隐私信息后导出
-  - *技术方案*：`exifreader` + Canvas 重绘或二进制段剥离
+- [x] **EXIF 信息查看与抹除（`image-exif`）**：解析相机/镜头/光圈快门/ISO/GPS 位置与完整 EXIF/XMP/IPTC/ICC 元数据，提供隐私体检与 JSON 导出，支持 JPEG/PNG 二进制无损段剥离及批量抹除 ZIP 打包
+  - *技术方案*：`exifreader` + 纯前端 JPEG/PNG 二进制段无损剥离器 + Canvas 重绘校正方向 + `fflate`
 - [ ] **长图切分 / 滚动截图分页（`image-slice`）**：将超长图片按固定高度或指定比例切成多张图（适合小红书/公众号多图发布）
 - [ ] **圆角与阴影美化 / 截图套壳（`screenshot-beautify`）**：为截图添加 macOS 窗口标题栏、渐变背景、圆角、多层柔和阴影与内边距，一键复制或导出高清宣传图
 - [ ] **SVG 转 PNG/WebP（`svg-to-image`）**：粘贴 SVG 代码或上传 `.svg` 文件，自定义倍数（1x/2x/4x）与尺寸导出位图

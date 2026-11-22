@@ -1,9 +1,9 @@
 import { zip } from 'fflate'
+import { decodeImageFile } from '@/lib/image'
 import { encodeBmp24, encodeIco, type IcoFrame } from './encoders'
 import {
   FORMAT_MAP,
   convertedFileName,
-  isHeicFile,
   type ConvertItem,
   type ConvertOptions,
   type ConvertResult,
@@ -34,33 +34,6 @@ export function detectAvifSupport(): Promise<boolean> {
   return avifPromise
 }
 
-/** 使用 HTMLImageElement 解码 SVG（支持缺少显式宽高的矢量图） */
-async function decodeSvgToBitmap(file: File): Promise<{ bitmap: ImageBitmap; previewUrl: string }> {
-  const url = URL.createObjectURL(file)
-  try {
-    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
-      const el = new Image()
-      el.onload = () => resolve(el)
-      el.onerror = () => reject(new Error('SVG 无法解析，请检查文件是否完整'))
-      el.src = url
-    })
-    const w = img.naturalWidth || 1024
-    const h = img.naturalHeight || 1024
-    const canvas = document.createElement('canvas')
-    canvas.width = w
-    canvas.height = h
-    const ctx = canvas.getContext('2d')!
-    ctx.drawImage(img, 0, 0, w, h)
-    const bitmap = await createImageBitmap(canvas)
-    canvas.width = 0
-    canvas.height = 0
-    return { bitmap, previewUrl: url }
-  } catch (err) {
-    URL.revokeObjectURL(url)
-    throw err
-  }
-}
-
 export interface DecodedSource {
   bitmap: ImageBitmap
   width: number
@@ -69,39 +42,15 @@ export interface DecodedSource {
 }
 
 /**
- * 统一解码输入图片为 ImageBitmap
- * - SVG：通过 HTMLImageElement 栅格化解码
- * - HEIC/HEIF：优先尝试浏览器原生解码（如新版 Safari），失败时按需动态加载 heic2any 解码
- * - 其他常见格式：原生 createImageBitmap
+ * 统一解码输入图片为 ImageBitmap（内置最新版 heic-to WASM 支持 iPhone 15/16 10-bit HDR HEIC）
  */
 export async function decodeInputFile(file: File): Promise<DecodedSource> {
-  const isSvg = file.type === 'image/svg+xml' || /\.svg$/i.test(file.name)
-  if (isSvg) {
-    const { bitmap, previewUrl } = await decodeSvgToBitmap(file)
-    return { bitmap, width: bitmap.width, height: bitmap.height, previewUrl }
-  }
-
-  // 优先走浏览器原生解码（速度快且零额外下载）
-  try {
-    const bitmap = await createImageBitmap(file)
-    const previewUrl = URL.createObjectURL(file)
-    return { bitmap, width: bitmap.width, height: bitmap.height, previewUrl }
-  } catch (nativeErr) {
-    if (!isHeicFile(file)) {
-      throw new Error('无法解析此图片，可能文件已损坏或格式不受支持')
-    }
-    // 按需动态加载 heic2any，避免非 HEIC 用户承担额外包体积
-    try {
-      const { default: heic2any } = await import('heic2any')
-      const output = await heic2any({ blob: file, toType: 'image/png' })
-      const pngBlob = Array.isArray(output) ? output[0] : output
-      const bitmap = await createImageBitmap(pngBlob)
-      const previewUrl = URL.createObjectURL(pngBlob)
-      return { bitmap, width: bitmap.width, height: bitmap.height, previewUrl }
-    } catch {
-      console.error('[image-convert] HEIC 解码失败:', nativeErr)
-      throw new Error('HEIC / HEIF 解码失败，可能为不受支持的编码变体')
-    }
+  const decoded = await decodeImageFile(file)
+  return {
+    bitmap: decoded.bitmap,
+    width: decoded.width,
+    height: decoded.height,
+    previewUrl: decoded.previewUrl,
   }
 }
 

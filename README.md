@@ -57,6 +57,7 @@ src/
 ├─ hooks/                     # 媒体查询、主题同步、快捷键等通用 Hook
 ├─ lib/
 │  ├─ file.ts                 # Blob 下载、Canvas 导出、剪贴板复制等文件工具
+│  ├─ image.ts                # 统一图片解码器（原生位图 / SVG / 按需懒加载 heic-to 支持 iPhone 15/16 HEIC）
 │  ├─ search.ts               # Fuse.js + 拼音按需索引
 │  └─ utils.ts                # 类名合并、字节格式化等
 ├─ pages/                     # 首页、分类页、收藏与最近、工具详情容器页、404
@@ -85,12 +86,32 @@ src/
    │  ├─ encoders.ts          # 零依赖 24-bit BMP 与多尺寸 PNG-in-ICO 二进制编码器
    │  ├─ engine.ts            # 解码缓存（HEIC 按需懒加载 heic2any）、格式转换与 ZIP 打包
    │  └─ index.tsx            # 6 格式卡片选择、预览与批量转换队列
-   └─ image-crop/             # 图片裁剪缩放
+   ├─ image-crop/             # 图片裁剪缩放
+   │  ├─ meta.ts              # 工具元数据
+   │  ├─ types.ts             # 常用比例、证件照尺寸与批量缩放配置类型
+   │  ├─ engine.ts            # 旋转外接盒计算、单次矩阵裁剪导出与批量缩放 ZIP 打包
+   │  ├─ CropCanvas.tsx       # 交互式裁剪画布（8 方向拖拽、锁比例、三分线、圆形参考线）
+   │  └─ index.tsx            # 精细裁剪与批量缩放双模式界面
+   ├─ image-watermark/        # 图片加水印
+   │  ├─ meta.ts              # 工具元数据
+   │  ├─ types.ts             # 水印配置、常用防盗/版权模板与九宫格锚点定义
+   │  ├─ engine.ts            # 对角线无缺角平铺矩阵、单点定位、混合模式与批量 ZIP 打包
+   │  └─ index.tsx            # 实时预览（支持画布拖拽微调）与批量水印工作台
+   ├─ image-palette/          # 图片取色与调色板
+   │  ├─ meta.ts              # 工具元数据
+   │  ├─ color.ts             # HEX/RGB/HSL/OKLCH/CMYK 转换、WCAG 对比度、K-Means++ 主色提取与色卡绘制
+   │  ├─ LoupeCanvas.tsx      # 11×11 像素放大镜与坐标采样画布
+   │  └─ index.tsx            # 取色工作台、衍生配色方案与 CSS/JSON/海报导出
+   ├─ image-split/            # 九宫格切图
+   │  ├─ meta.ts              # 工具元数据
+   │  ├─ types.ts             # 网格预设、构图模式与切片配置类型
+   │  ├─ engine.ts            # 统一切分几何计算、单格/批量渲染与 ZIP 打包
+   │  └─ index.tsx            # 原图切线拖拽构图 + 朋友圈发图效果双视图界面
+   └─ image-exif/             # EXIF 信息查看与抹除
       ├─ meta.ts              # 工具元数据
-      ├─ types.ts             # 常用比例、证件照尺寸与批量缩放配置类型
-      ├─ engine.ts            # 旋转外接盒计算、单次矩阵裁剪导出与批量缩放 ZIP 打包
-      ├─ CropCanvas.tsx       # 交互式裁剪画布（8 方向拖拽、锁比例、三分线、圆形参考线）
-      └─ index.tsx            # 精细裁剪与批量缩放双模式界面
+      ├─ parser.ts            # 基于 exifreader 的摄影速览、GPS 与隐私体检解析器
+      ├─ stripper.ts          # JPEG/PNG 二进制无损元数据剥离器、Canvas 重绘与批量 ZIP 打包
+      └─ index.tsx            # 隐私体检、摄影卡片、可搜索元数据表与批量抹除工作台
 ```
 
 ---
