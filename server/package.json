@@ -1,0 +1,13 @@
+{
+  "name": "litebox-server",
+  "private": true,
+  "version": "0.1.0",
+  "description": "轻匣（LiteBox）前端静态产物独立 Node.js 部署服务（零第三方依赖，内置 Brotli/Gzip 与 PWA 缓存）",
+  "type": "module",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "scripts": {
+    "start": "node index.mjs"
+  }
+}

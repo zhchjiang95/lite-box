@@ -18,9 +18,23 @@ pnpm typecheck
 # 生产环境构建（含 PWA Service Worker）
 pnpm build
 
-# 预览生产构建产物
+# 预览生产构建产物（Vite 临时预览）
 pnpm preview
 ```
+
+### 生产部署（独立 Node.js 服务）
+
+仓库根目录提供了与前端工程解耦的独立部署目录 [server/](./server/README.md)（零第三方依赖，内置 Brotli/Gzip 压缩与 SPA/PWA 缓存）：
+
+```bash
+# 1. 构建前端产物
+pnpm build
+
+# 2. 进入独立的 server/ 目录启动服务（默认监听 0.0.0.0:3000，自动读取 ../dist 或 ./public）
+cd server && node index.mjs
+```
+
+> 支持 `PORT`、`HOST`、`DIST_DIR`、`ENABLE_COMPRESSION` 环境变量，详细说明见 [server/README.md](./server/README.md)。
 
 ---
 
