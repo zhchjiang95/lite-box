@@ -1,6 +1,4 @@
 import {
-  RefreshCw,
-  Crop,
   Stamp,
   Pipette,
   FileStack,
@@ -21,8 +19,6 @@ import type { PlannedTool } from './types'
 
 /** 规划中的工具（首页以“即将上线”展示，实现后从此处移除即可）。完整清单见 TODO.md */
 export const plannedTools: PlannedTool[] = [
-  { name: '图片格式转换', category: 'image', icon: RefreshCw, description: 'PNG、JPG、WebP、AVIF 互转' },
-  { name: '图片裁剪缩放', category: 'image', icon: Crop, description: '按比例裁剪、批量缩放' },
   { name: '图片加水印', category: 'image', icon: Stamp, description: '文字 / 图片水印，平铺或定位' },
   { name: '图片取色', category: 'image', icon: Pipette, description: '提取主色调与任意像素颜色' },
   { name: 'PDF 合并拆分', category: 'pdf', icon: FileStack, description: '多个 PDF 合并，按页拆分' },

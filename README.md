@@ -72,13 +72,25 @@ src/
    │  ├─ meta.ts              # 工具元数据（同步加载，轻量）
    │  ├─ index.tsx            # 工具界面与交互（路由懒加载）
    │  └─ stitch.ts            # 纯函数布局计算与 Canvas 渲染引擎
-   └─ image-compress/         # 图片压缩
+   ├─ image-compress/         # 图片压缩
+   │  ├─ meta.ts              # 工具元数据
+   │  ├─ types.ts             # 配置与格式映射工具函数
+   │  ├─ worker.ts            # Web Worker（OffscreenCanvas + UPNG 智能量化）
+   │  ├─ engine.ts            # Worker 并发池、AVIF 能力探测与 fflate ZIP 打包
+   │  ├─ CompareView.tsx      # Before / After 滑动条与 1x/2x/4x 放大对比视口
+   │  └─ index.tsx            # 主界面与批量队列
+   ├─ image-convert/          # 图片格式转换
+   │  ├─ meta.ts              # 工具元数据
+   │  ├─ types.ts             # 目标格式定义与 HEIC/SVG 识别
+   │  ├─ encoders.ts          # 零依赖 24-bit BMP 与多尺寸 PNG-in-ICO 二进制编码器
+   │  ├─ engine.ts            # 解码缓存（HEIC 按需懒加载 heic2any）、格式转换与 ZIP 打包
+   │  └─ index.tsx            # 6 格式卡片选择、预览与批量转换队列
+   └─ image-crop/             # 图片裁剪缩放
       ├─ meta.ts              # 工具元数据
-      ├─ types.ts             # 配置与格式映射工具函数
-      ├─ worker.ts            # Web Worker（OffscreenCanvas + UPNG 智能量化）
-      ├─ engine.ts            # Worker 并发池、AVIF 能力探测与 fflate ZIP 打包
-      ├─ CompareView.tsx      # Before / After 滑动条与 1x/2x/4x 放大对比视口
-      └─ index.tsx            # 主界面与批量队列
+      ├─ types.ts             # 常用比例、证件照尺寸与批量缩放配置类型
+      ├─ engine.ts            # 旋转外接盒计算、单次矩阵裁剪导出与批量缩放 ZIP 打包
+      ├─ CropCanvas.tsx       # 交互式裁剪画布（8 方向拖拽、锁比例、三分线、圆形参考线）
+      └─ index.tsx            # 精细裁剪与批量缩放双模式界面
 ```
 
 ---

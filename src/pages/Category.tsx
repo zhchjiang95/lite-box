@@ -15,9 +15,8 @@ export function CategoryPage() {
   const [from, to] = cat.gradient
 
   return (
-    <PageContainer>
+    <PageContainer key={cat.id}>
       <motion.header
-        key={cat.id}
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         className="relative mb-8 overflow-hidden rounded-3xl border p-6 sm:p-8"
@@ -45,7 +44,7 @@ export function CategoryPage() {
       {list.length + planned.length === 0 ? (
         <EmptyState icon={<PackageOpen />} title="该分类的工具正在开发中" description="敬请期待，我们会持续上新。" />
       ) : (
-        <ToolGrid key={cat.id} tools={list} planned={planned} />
+        <ToolGrid tools={list} planned={planned} />
       )}
     </PageContainer>
   )

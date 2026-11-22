@@ -11,10 +11,10 @@
 - [x] **图片拼接（`image-stitch`）**：横向、纵向、宫格拼接，支持拖拽排序、间距、外边距、圆角、背景色、统一宽/高、对齐方式与多格式导出
 - [x] **图片压缩（`image-compress`）**：批量压缩 JPG / PNG / WebP / AVIF，支持画质滑块、PNG 智能色彩量化、最大边长限制、前后体积与画质对比（Before/After 滑动条 + 4 倍放大镜）、一键打包 ZIP 下载
   - *技术方案*：Web Worker 并发池 + `OffscreenCanvas` + `upng-js`（PNG 调色板量化）+ `fflate`（零级极速 ZIP 打包）
-- [ ] **图片格式转换（`image-convert`）**：PNG、JPG、WebP、AVIF、BMP、ICO 批量互转，支持 HEIC/HEIF 转 JPG/PNG
-  - *技术方案*：`createImageBitmap` + `OffscreenCanvas` / `heic2any`
-- [ ] **图片裁剪与缩放（`image-crop`）**：自由比例或预设比例（1:1、4:3、16:9、证件照尺寸）裁剪、旋转翻转、按像素或百分比批量缩放
-  - *技术方案*：Canvas 2D 变换绘制
+- [x] **图片格式转换（`image-convert`）**：PNG、JPG、WebP、AVIF、BMP、ICO 批量互转，支持 HEIC/HEIF 与 SVG 直转、多尺寸 ICO 封装、尺寸倍率/最大边限制及一键 ZIP 打包
+  - *技术方案*：`createImageBitmap` + `OffscreenCanvas` + 按需懒加载 `heic2any` + 纯前端 24-bit BMP / 多尺寸 ICO 二进制编码器 + `fflate`
+- [x] **图片裁剪与缩放（`image-crop`）**：自由比例或预设比例（1:1、4:3、16:9、一寸/二寸/护照证件照标准尺寸）交互式裁剪、圆形头像裁切、90°/±45° 旋转翻转、自定义输出像素，以及多图按百分比/固定宽/高/指定尺寸批量缩放与 ZIP 打包
+  - *技术方案*：纯前端交互式 `CropCanvas`（8 方向拖拽 + 锁比例约束）+ 单次 Canvas 2D 变换矩阵渲染 + `fflate`
 - [ ] **图片加水印（`image-watermark`）**：支持文字水印与图片 Logo 水印，支持全屏斜向平铺（防盗图证件水印）或九宫格定位，可调透明度、字号、旋转角度、间距
   - *技术方案*：Canvas 2D 平铺矩阵计算与混色
 - [ ] **图片取色与调色板（`image-palette`）**：点击放大镜取任意像素色值（HEX / RGB / HSL / OKLCH），自动提取图片主色调与配色方案

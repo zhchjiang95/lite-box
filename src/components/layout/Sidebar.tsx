@@ -35,6 +35,10 @@ function NavItem({
     <NavLink
       to={to}
       viewTransition
+      onClick={(e) => {
+        // 已在当前页时避免重复触发路由转场动画
+        if (active) e.preventDefault()
+      }}
       className={cn(
         'relative flex h-10 items-center gap-3 rounded-xl px-3 text-sm font-medium transition-colors',
         active ? 'text-foreground' : 'text-muted-foreground hover:text-foreground hover:bg-foreground/[0.04]',
