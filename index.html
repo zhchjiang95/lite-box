@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="description" content="轻匣 · 纯浏览器本地处理的在线工具箱：图片拼接、压缩、格式转换等，文件不上传，快速安全。" />
+    <meta name="theme-color" content="#0b0b12" />
+    <title>轻匣 · 本地工具箱</title>
+    <script>
+      // 首屏前同步应用主题，避免闪烁
+      ;(function () {
+        try {
+          var s = JSON.parse(localStorage.getItem('litebox-settings') || '{}')
+          var t = (s.state && s.state.theme) || 'system'
+          var dark = t === 'dark' || (t === 'system' && matchMedia('(prefers-color-scheme: dark)').matches)
+          document.documentElement.classList.toggle('dark', dark)
+        } catch (e) {}
+      })()
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
+
