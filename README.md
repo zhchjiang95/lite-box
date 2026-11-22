@@ -58,6 +58,7 @@ src/
 ├─ lib/
 │  ├─ file.ts                 # Blob 下载、Canvas 导出、剪贴板复制等文件工具
 │  ├─ image.ts                # 统一图片解码器（原生位图 / SVG / 按需懒加载 heic-to 支持 iPhone 15/16 HEIC）
+│  ├─ pdf.ts                  # PDF.js 本地 Worker 初始化、页面缩略图渲染与页码范围解析器
 │  ├─ search.ts               # Fuse.js + 拼音按需索引
 │  └─ utils.ts                # 类名合并、字节格式化等
 ├─ pages/                     # 首页、分类页、收藏与最近、工具详情容器页、404
@@ -131,12 +132,33 @@ src/
    │  ├─ types.ts             # 全平台输出规格、渐变预设与配置类型
    │  ├─ engine.ts            # 多尺寸 PNG/ICO 生成、site.webmanifest/HTML 构建与 ZIP 打包
    │  └─ index.tsx            # 亮/暗浏览器标签模拟、主屏预览与一键下载工作台
-   └─ photo-frame/            # 摄影作品分享框
+   ├─ photo-frame/            # 摄影作品分享框
+   │  ├─ meta.ts              # 工具元数据
+   │  ├─ types.ts             # 6 套画框主题、6 套艺术字体、品牌徽标与四向布局配置
+   │  ├─ fonts.ts             # 按需异步加载精选艺术字体（离线自动优雅降级）
+   │  ├─ engine.ts            # 四向画框渲染、矢量品牌徽标、弥散毛玻璃/胶片齿孔与示例图生成
+   │  └─ index.tsx            # 自动解析 EXIF + 实时画框定制工作台
+   ├─ pdf-merge-split/        # PDF 合并与拆分
+   │  ├─ meta.ts              # 工具元数据
+   │  ├─ types.ts             # 源文件与页面卡片类型定义
+   │  ├─ engine.ts            # 基于 pdf-lib 的无损合并、按范围拆分与固定页数 ZIP 拆分
+   │  ├─ PageThumbnail.tsx    # IntersectionObserver 懒渲染页面卡片与拖拽重排组件
+   │  └─ index.tsx            # 统一页面级合并/拆分/旋转/高清预览工作台
+   ├─ image-to-pdf/           # 图片转 PDF
+   │  ├─ meta.ts              # 工具元数据
+   │  ├─ types.ts             # 纸张规格、方向、页边距与压缩配置类型
+   │  ├─ engine.ts            # 基于 pdf-lib 的智能直通/转换嵌入、裁切与页码生成引擎
+   │  └─ index.tsx            # 所见即所得纸张模拟预览与拖拽排页工作台
+   ├─ pdf-to-image/           # PDF 转图片
+   │  ├─ meta.ts              # 工具元数据
+   │  ├─ engine.ts            # 高倍渲染单页、批量打包 ZIP 与纵向超清长图合成引擎
+   │  ├─ PageCard.tsx         # IntersectionObserver 懒渲染页面卡片（勾选/复制/下载/放大）
+   │  └─ index.tsx            # PDF 转图工作台与高清预览弹窗
+   └─ pdf-watermark/          # PDF 加水印与页码
       ├─ meta.ts              # 工具元数据
-      ├─ types.ts             # 6 套画框主题、6 套艺术字体、品牌徽标与四向布局配置
-      ├─ fonts.ts             # 按需异步加载精选艺术字体（离线自动优雅降级）
-      ├─ engine.ts            # 四向画框渲染、矢量品牌徽标、弥散毛玻璃/胶片齿孔与示例图生成
-      └─ index.tsx            # 自动解析 EXIF + 实时画框定制工作台
+      ├─ types.ts             # 水印模板、九宫格锚点与中英文页码配置类型
+      ├─ engine.ts            # 3× 超清中文/Logo 透明印章嵌入、无损平铺/页码写入与批量 ZIP
+      └─ index.tsx            # 实时翻页叠加预览与多文档批量工作台
 ```
 
 ---

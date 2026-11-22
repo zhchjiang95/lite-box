@@ -1,6 +1,4 @@
 import {
-  FileStack,
-  FileImage,
   Hash,
   Binary,
   Braces,
@@ -17,8 +15,6 @@ import type { PlannedTool } from './types'
 
 /** 规划中的工具（首页以“即将上线”展示，实现后从此处移除即可）。完整清单见 TODO.md */
 export const plannedTools: PlannedTool[] = [
-  { name: 'PDF 合并拆分', category: 'pdf', icon: FileStack, description: '多个 PDF 合并，按页拆分' },
-  { name: '图片转 PDF', category: 'pdf', icon: FileImage, description: '多张图片一键生成 PDF' },
   { name: '字数统计', category: 'text', icon: LetterText, description: '字符、词数、行数、阅读时长' },
   { name: '文本对比', category: 'text', icon: GitCompare, description: '逐行 / 逐字高亮差异' },
   { name: 'Base64 编解码', category: 'encode', icon: Binary, description: '文本与文件 Base64 互转' },

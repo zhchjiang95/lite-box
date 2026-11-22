@@ -38,14 +38,14 @@
 
 ## 二、PDF 工具（`pdf`）
 
-- [ ] **PDF 合并与拆分（`pdf-merge-split`）**：多份 PDF 拖拽合并、按页码范围拆分、页面拖拽重排、单页旋转与删除
-  - *技术方案*：`pdf-lib`（纯 JS 修改 PDF 结构）+ `pdfjs-dist`（渲染页面缩略图）
-- [ ] **图片转 PDF（`image-to-pdf`）**：多张图片合成一份 PDF，支持 A4/自适应纸张大小、方向、页边距设置
-  - *技术方案*：`pdf-lib`
-- [ ] **PDF 转图片（`pdf-to-image`）**：将 PDF 每一页渲染为高清 PNG / JPG，支持单页下载或整本打包为 ZIP
-  - *技术方案*：`pdfjs-dist` + `fflate`
-- [ ] **PDF 加水印 / 页码（`pdf-watermark`）**：为 PDF 批量添加文字水印或底部页码
-  - *技术方案*：`pdf-lib`
+- [x] **PDF 合并与拆分（`pdf-merge-split`）**：多份 PDF 拖拽合并、可视化页面拖拽重排、单页旋转/复制/批量删除、高清放大预览、按页码范围（`1-3, 5, 8-10`）或每 N 页拆分并打包 ZIP
+  - *技术方案*：`pdf-lib`（无损结构合并拆分）+ `pdfjs-dist`（本地离线 Worker + `IntersectionObserver` 懒渲染缩略图）+ `fflate`
+- [x] **图片转 PDF（`image-to-pdf`）**：多张图片（含 JPG/PNG/WebP/SVG/HEIC）一键合成 PDF，支持 A4/A3/A5/Letter/16:9 与自适应原图纸张、自动匹配横竖方向、页边距与背景色、页码、拖拽排页、单页旋转及可选压缩减小体积
+  - *技术方案*：`pdf-lib` + 全站统一图片解码器（`src/lib/image.ts`）
+- [x] **PDF 转图片（`pdf-to-image`）**：将 PDF 逐页渲染为 1×–3× 超清 PNG / JPG / WebP，支持单页复制/下载、按页码范围勾选打包 ZIP，或一键拼接为纵向长图
+  - *技术方案*：`pdfjs-dist`（本地离线 Worker + 懒渲染缩略图）+ Canvas 长图合成 + `fflate`
+- [x] **PDF 加水印 / 页码（`pdf-watermark`）**：为 PDF 批量添加中文/英文/Emoji 多行文字或透明 Logo 水印（全屏斜向错行平铺或九宫格定位）及 6 方位中英文页码（支持跳过首页封面），实时翻页预览与批量 ZIP 打包
+  - *技术方案*：`pdf-lib`（全文档复用单份 3× 超清透明 PNG 印章无损写入，完美支持中文且原矢量文字不失真）+ `pdfjs-dist` + `fflate`
 
 ---
 
