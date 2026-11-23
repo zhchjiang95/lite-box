@@ -218,10 +218,28 @@ src/
    │  ├─ meta.ts              # 工具元数据
    │  ├─ inspector.ts         # OOXML 元数据/隐藏批注/修订痕迹深度解析与无损脱敏清理引擎
    │  └─ index.tsx            # 免装 Office 本地排版预览、直接打印与批量脱敏导出工作台
-   └─ docx-extract-media/     # Word / PPT 原图无损提取
+   ├─ docx-extract-media/     # Word / PPT 原图无损提取
+   │  ├─ meta.ts              # 工具元数据
+   │  ├─ extractor.ts         # 基于 fflate 的 .docx/.pptx/.xlsx 原始媒体流无损解包与 ZIP 封装引擎
+   │  └─ index.tsx            # 多文档画廊预览、小图过滤、大图灯箱、剪贴板复制与批量打包工作台
+   ├─ docx-diff/              # Word 文档内容对比
+   │  ├─ meta.ts              # 工具元数据
+   │  ├─ engine.ts            # OOXML 段落/表格/页眉页脚提取、两级 Myers Diff 与 HTML 报告生成引擎
+   │  └─ index.tsx            # 双栏/行内红绿高亮比对、逐处跳转与一键合同示例工作台
+   ├─ markdown-preview/       # Markdown 实时预览与导出
+   │  ├─ meta.ts              # 工具元数据
+   │  ├─ themes.ts            # 4 套排版主题 CSS、暗色语法高亮样式与综合语法示例
+   │  ├─ renderer.ts          # marked + highlight.js + KaTeX 渲染、XSS 清洗、HTML/长图/PDF 导出引擎
+   │  └─ index.tsx            # 分屏同步滚动、快捷写作语法栏与多格式导出工作台
+   ├─ chinese-convert/        # 繁简转换与拼音标注
+   │  ├─ meta.ts              # 工具元数据
+   │  ├─ engine.ts            # OpenCC 7 套简繁词库转换、Ruby 注音流与多音字声韵母拆解引擎
+   │  └─ index.tsx            # 简繁变动高亮、头顶注音打印卡、首字母提取与多音字查询工作台
+   └─ qrcode/                 # 二维码生成与识别
       ├─ meta.ts              # 工具元数据
-      ├─ extractor.ts         # 基于 fflate 的 .docx/.pptx/.xlsx 原始媒体流无损解包与 ZIP 封装引擎
-      └─ index.tsx            # 多文档画廊预览、小图过滤、大图灯箱、剪贴板复制与批量打包工作台
+      ├─ types.ts             # Wi-Fi/vCard/邮件/短信构造器、6 套美学预设、语义解析与对比度体检
+      ├─ engine.ts            # 自研 Canvas/无损矢量 SVG 双渲染器、批量 ZIP 打包与 BarcodeDetector/jsQR 离线解码引擎
+      └─ index.tsx            # 美化生成、批量打包与图片/剪贴板/摄像头离线扫码工作台
 ```
 
 ---

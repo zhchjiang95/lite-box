@@ -61,8 +61,8 @@
   - *技术方案*：`fflate` 直接解包读取 `word/media/`、`ppt/media/`、`xl/media/` 原始字节（零重编码、100% 无损）
 - [ ] **Word 文档瘦身压缩（`docx-compress`）**：解决 Word 文档动辄几十 MB 发不出去的痛点——完全保留文字与排版，自动将内嵌的高清大图压缩后原样回填封装，文档体积通常可减少 60%–90%
   - *技术方案*：`fflate`（OOXML 无损解包/重封装）+ Canvas 图片压缩管线
-- [ ] **Word 文档内容对比（`docx-diff`）**：拖入两份 `.docx`（如合同修订前后版本），本地提取正文与表格做逐段/逐字红绿高亮差异比对，快速定位修改条款
-  - *技术方案*：`mammoth` + `diff`（Myers diff 算法）
+- [x] **Word 文档内容对比（`docx-diff`）**：拖入两份 `.docx`（如合同修订前后版本，亦兼容 `.txt / .md`），本地结构化提取正文段落、标题、表格行及可选页眉页脚，执行两级 Myers Diff（段落对齐 + 逐字红绿高亮），支持左右双栏/合并行内切换、只看差异、上一处/下一处差异定位跳转、相似度统计与导出独立可打印 HTML 审阅报告
+  - *技术方案*：`fflate` + `DOMParser` 结构化解析 `word/document.xml`（自动跳过 `w:del` 历史删除修订）+ `diff`（Myers diff 算法）
 - [x] **Word 在线预览与隐私元数据清理（`docx-viewer`）**：无需安装 Office 本地秒开 `.docx` 高还原排版预览（支持缩放、页眉页脚、批注与修订痕迹切换及直接打印），深度体检作者、公司、最后修改人、编辑时长、自定义属性、隐藏批注与修订痕迹，支持勾选脱敏清理并无损重导出（多文件批量打包 ZIP）
   - *技术方案*：`docx-preview`（按需动态加载）+ `fflate` + `DOMParser`/`XMLSerializer`（精准无损清理 `docProps/core.xml`、`app.xml`、`custom.xml`、`word/people.xml` 与可选批注）
 
@@ -92,9 +92,10 @@
   - *技术方案*：`diff`（Myers diff 算法）
 - [ ] **文本去重与行处理（`text-lines`）**：按行去重、排序（字典序/长度/自然序/随机打乱）、去空行、首尾加前后缀、合并或分割
 - [ ] **英文字母大小写与命名风格转换（`case-convert`）**：`camelCase`、`PascalCase`、`snake_case`、`kebab-case`、`CONSTANT_CASE`、首字母大写等一键互转
-- [ ] **Markdown 实时预览与导出（`markdown-preview`）**：支持 GFM 表格、代码高亮、数学公式、导出 HTML 或长图
-- [ ] **繁简转换与拼音标注（`chinese-convert`）**：简繁互转、汉字转带声调/不带声调拼音、首字母提取
-  - *技术方案*：`pinyin-pro` / `opencc-js`
+- [x] **Markdown 实时预览与导出（`markdown-preview`）**：支持 GFM 表格、任务清单、35+ 语言代码语法高亮、KaTeX 行内/块级数学公式、4 套精美排版主题（极简文档/公众号风/学术纸张/极客暗夜）、分屏同步滚动、快捷语法栏，一键导出独立 HTML、2× 高清长图 PNG、富文本复制、打印 PDF 与保存 `.md`
+  - *技术方案*：`marked` + `highlight.js/lib/common` + `katex` + `html-to-image` + DOMParser XSS 清洗
+- [x] **繁简转换与拼音标注（`chinese-convert`）**：基于 OpenCC 权威词库支持大陆简体、台湾正体（含两岸地域词汇转换）、香港繁体 7 套方案精准互转与变动字符高亮，支持汉字转带声调/数字声调/无声调拼音、语文头顶 Ruby 注音卡片（支持打印与复制 HTML）、首字母提取、姓氏多音字模式及声韵母多音字拆解表
+  - *技术方案*：`opencc-js`（按需动态加载 + 转换器缓存）+ `pinyin-pro`
 - [x] **正则提取与批量替换（`text-extract`）**：从杂乱文本中一键提取邮箱、手机号、网址、IP 地址、身份证号、日期、色值与数字，支持自定义正则、捕获组模板、去重排序、TXT/CSV/JSON 导出、原文高亮预览，以及多规则串联流水线批量替换与行级 Diff 对比
 
 ---
@@ -126,8 +127,8 @@
 
 ## 八、生成器（`generate`）
 
-- [ ] **二维码生成与识别（`qrcode`）**：支持自定义前景/背景色、圆点样式、嵌入中心 Logo 生成高清 PNG/SVG 二维码；支持拖入或粘贴二维码图片离线解码
-  - *技术方案*：`qrcode` / `qr-code-styling` + `jsqr`（或原生 `BarcodeDetector`）
+- [x] **二维码生成与识别（`qrcode`）**：支持 5 类内容模板（网址/文本、Wi-Fi 连网、电子名片 vCard、邮件、短信/电话）、6 套预设、5 种码点（含液态连接/圆点/菱形）、3 种码眼、线性渐变与透明底、嵌入中心 Logo（自动升 H 容错并安全镂空）、底部文字标注、可读性对比度体检、高清 PNG / 无损矢量 SVG 导出及多行批量打包 ZIP；支持拖放/粘贴图片（含 HEIC）与摄像头离线扫码识别，并可一键回填二次美化
+  - *技术方案*：`qrcode` 矩阵 + 自研 Canvas/SVG 双渲染器 + `fflate` 批量打包 + 原生 `BarcodeDetector` / `jsqr` 多尺度反色离线解码
 - [ ] **条形码生成（`barcode`）**：支持 CODE128、EAN-13、UPC 等常见条形码生成与导出
   - *技术方案*：`jsbarcode`
 - [ ] **随机密码与密钥生成器（`password-generator`）**：基于密码学安全随机数 `crypto.getRandomValues`，可定制长度、字符集、排除易混淆字符、批量生成与熵值强度评估

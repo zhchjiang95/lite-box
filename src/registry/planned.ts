@@ -4,7 +4,6 @@ import {
   Braces,
   Clock,
   Regex,
-  QrCode,
   KeyRound,
   GitCompare,
   LetterText,
@@ -31,7 +30,6 @@ export const plannedTools: PlannedTool[] = [
   { name: '时间戳转换', category: 'dev', icon: Clock, description: 'Unix 时间戳与日期互转' },
   { name: '正则测试', category: 'dev', icon: Regex, description: '实时匹配高亮与分组' },
   { name: '颜色转换', category: 'dev', icon: Palette, description: 'HEX、RGB、HSL、OKLCH 互转' },
-  { name: '二维码生成', category: 'generate', icon: QrCode, description: '自定义颜色、Logo 的二维码' },
   { name: '密码生成器', category: 'generate', icon: KeyRound, description: '高强度随机密码' },
   { name: '视频转 GIF', category: 'media', icon: Film, description: '截取片段生成 GIF 动图' },
 ]
