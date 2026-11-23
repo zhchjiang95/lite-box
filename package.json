@@ -15,6 +15,7 @@
     "@radix-ui/react-tooltip": "^1.4.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
+    "docx-preview": "^0.4.1",
     "exifreader": "^4.54.0",
     "fflate": "^0.8.3",
     "fuse.js": "^7.5.0",

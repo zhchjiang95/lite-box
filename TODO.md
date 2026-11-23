@@ -57,14 +57,14 @@
   - *技术方案*：`marked`（AST 解析）+ `docx`（纯前端生成原生 Word 样式文档）
 - [ ] **Word 转 Markdown / HTML（`docx-to-markdown`）**：本地解析 `.docx`，保留标题层级、表格、列表与内嵌图片，一键导出干净的 Markdown / HTML 或附带图片目录的 ZIP，方便迁移至博客、飞书、Notion
   - *技术方案*：`mammoth` + `turndown` + `fflate`
-- [ ] **Word 原图无损提取（`docx-extract-media`）**：拖入 `.docx`（同时兼容 `.pptx` / `.xlsx`），一键无损提取文档中所有内嵌高清原图与媒体文件，支持画廊预览、单张下载与批量 ZIP 打包
-  - *技术方案*：`fflate` 直接解包读取 `word/media/`（零画质损失）
+- [x] **Word 原图无损提取（`docx-extract-media`）**：拖入 `.docx`（同时兼容 `.pptx` / `.xlsx`，支持多文档批量提取），零画质损失一键提取文档中所有内嵌高清原图与音视频媒体，支持画廊大图灯箱预览、过滤 `<5KB` 装饰小图标、按格式/体积筛选排序、单张复制/下载与按文档分目录 ZIP 打包
+  - *技术方案*：`fflate` 直接解包读取 `word/media/`、`ppt/media/`、`xl/media/` 原始字节（零重编码、100% 无损）
 - [ ] **Word 文档瘦身压缩（`docx-compress`）**：解决 Word 文档动辄几十 MB 发不出去的痛点——完全保留文字与排版，自动将内嵌的高清大图压缩后原样回填封装，文档体积通常可减少 60%–90%
   - *技术方案*：`fflate`（OOXML 无损解包/重封装）+ Canvas 图片压缩管线
 - [ ] **Word 文档内容对比（`docx-diff`）**：拖入两份 `.docx`（如合同修订前后版本），本地提取正文与表格做逐段/逐字红绿高亮差异比对，快速定位修改条款
   - *技术方案*：`mammoth` + `diff`（Myers diff 算法）
-- [ ] **Word 在线预览与隐私元数据清理（`docx-viewer`）**：无需安装 Office 本地秒开 `.docx` 预览，查看并一键清除作者、公司、最后修改人、编辑时长等隐藏文档属性后重新导出
-  - *技术方案*：`docx-preview` + `fflate`（清理 `docProps/core.xml` 与 `app.xml`）
+- [x] **Word 在线预览与隐私元数据清理（`docx-viewer`）**：无需安装 Office 本地秒开 `.docx` 高还原排版预览（支持缩放、页眉页脚、批注与修订痕迹切换及直接打印），深度体检作者、公司、最后修改人、编辑时长、自定义属性、隐藏批注与修订痕迹，支持勾选脱敏清理并无损重导出（多文件批量打包 ZIP）
+  - *技术方案*：`docx-preview`（按需动态加载）+ `fflate` + `DOMParser`/`XMLSerializer`（精准无损清理 `docProps/core.xml`、`app.xml`、`custom.xml`、`word/people.xml` 与可选批注）
 
 ---
 

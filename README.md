@@ -210,10 +210,18 @@ src/
    │  ├─ types.ts             # 4 档画质/帧率预设与实时链路遥测类型定义
    │  ├─ engine.ts            # WebRTC 一投多并发推流、定向邀请与实时分辨率/帧率/RTT 遥测引擎
    │  └─ index.tsx            # 推流控制台、附近直播发现与全屏/画中画/截屏影院观看台
-   └─ lan-clipboard/          # 局域网共享剪贴板
+   ├─ lan-clipboard/          # 局域网共享剪贴板
+   │  ├─ meta.ts              # 工具元数据
+   │  ├─ types.ts             # 内容类型自动识别（链接/代码/文本）与截图轻量化压缩/复制工具
+   │  └─ index.tsx            # 多端实时同步剪贴板流、一键读剪贴板、置顶筛选与一键焚毁工作台
+   ├─ docx-viewer/            # Word 在线预览与隐私元数据清理
+   │  ├─ meta.ts              # 工具元数据
+   │  ├─ inspector.ts         # OOXML 元数据/隐藏批注/修订痕迹深度解析与无损脱敏清理引擎
+   │  └─ index.tsx            # 免装 Office 本地排版预览、直接打印与批量脱敏导出工作台
+   └─ docx-extract-media/     # Word / PPT 原图无损提取
       ├─ meta.ts              # 工具元数据
-      ├─ types.ts             # 内容类型自动识别（链接/代码/文本）与截图轻量化压缩/复制工具
-      └─ index.tsx            # 多端实时同步剪贴板流、一键读剪贴板、置顶筛选与一键焚毁工作台
+      ├─ extractor.ts         # 基于 fflate 的 .docx/.pptx/.xlsx 原始媒体流无损解包与 ZIP 封装引擎
+      └─ index.tsx            # 多文档画廊预览、小图过滤、大图灯箱、剪贴板复制与批量打包工作台
 ```
 
 ---
