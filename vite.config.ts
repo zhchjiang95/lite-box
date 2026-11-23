@@ -93,6 +93,16 @@ export default defineConfig({
       '@': fileURLToPath(new URL('./src', import.meta.url)),
     },
   },
+  server: {
+    // 开发期将局域网信令 WebSocket 代理到独立的 server/ 后端服务
+    proxy: {
+      '/ws/lan': {
+        target: 'ws://127.0.0.1:3000',
+        ws: true,
+        changeOrigin: true,
+      },
+    },
+  },
   build: {
     target: 'es2022',
     rollupOptions: {

@@ -6,6 +6,7 @@ import { categories, tools } from '@/registry'
 import { useSettings, useUI } from '@/stores/settings'
 import { cn, isMac } from '@/lib/utils'
 import { Logo } from '../Brand'
+import { SidebarAuthorBar } from '../AuthorLinks'
 import { ThemeToggle } from '../ThemeToggle'
 import { Kbd } from '../ui/kbd'
 import { Tooltip } from '../ui/tooltip'
@@ -163,6 +164,8 @@ export function Sidebar() {
           tooltipSide="right"
           className={collapsed ? 'h-9 w-full rounded-lg' : undefined}
         />
+        {/* 开源仓库与公众号快捷入口 */}
+        <SidebarAuthorBar collapsed={collapsed} />
         {(() => {
           const toggleBtn = (
             <button

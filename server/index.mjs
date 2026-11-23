@@ -20,6 +20,7 @@ import path from 'node:path'
 import zlib from 'node:zlib'
 import { promisify } from 'node:util'
 import { fileURLToPath } from 'node:url'
+import { attachLanSignaling } from './signaling.mjs'
 
 const brotliCompress = promisify(zlib.brotliCompress)
 const gzipCompress = promisify(zlib.gzip)
@@ -232,12 +233,14 @@ async function sendStaticFile(req, res, filePath, statusCode = 200) {
   res.end(compressed.buffer)
 }
 
-/** 启动前校验静态构建产物是否存在 */
-if (!fs.existsSync(INDEX_HTML)) {
-  console.error(`❌ 未找到前端构建产物：${INDEX_HTML}`)
-  console.error('   请在前端根目录执行 `pnpm build`，或将 dist/ 内容放入 server/public/，或通过 DIST_DIR 指定目录。')
-  process.exit(1)
+/** 启动前校验静态构建产物是否存在（纯开发模式仅提供 /ws/lan 信令时允许跳过） */
+const HAS_DIST = fs.existsSync(INDEX_HTML)
+if (!HAS_DIST) {
+  console.warn(`⚠️  未找到前端构建产物：${INDEX_HTML}`)
+  console.warn('   静态页面访问将返回提示，但 /ws/lan 局域网信令服务可正常供 pnpm dev 联调使用。')
 }
+
+let signalingHandle = null
 
 const server = http.createServer(async (req, res) => {
   try {
@@ -250,7 +253,9 @@ const server = http.createServer(async (req, res) => {
       const body = JSON.stringify({
         ok: true,
         service: 'litebox-server',
+        distReady: HAS_DIST,
         compression: ENABLE_COMPRESSION ? 'br+gzip' : 'disabled',
+        signaling: signalingHandle?.getStats() ?? { onlineDevices: 0, activeRooms: 0 },
         uptimeSec: Math.floor(process.uptime()),
       })
       setSecurityHeaders(res)
@@ -260,6 +265,12 @@ const server = http.createServer(async (req, res) => {
         'Content-Length': Buffer.byteLength(body),
       })
       res.end(method === 'HEAD' ? undefined : body)
+      return
+    }
+
+    if (!HAS_DIST) {
+      res.writeHead(503, { 'Content-Type': 'text/plain; charset=utf-8' })
+      res.end('未找到前端构建产物 dist/index.html，请先执行 pnpm build；当前仅运行 /ws/lan 局域网信令服务。')
       return
     }
 
@@ -310,13 +321,16 @@ const server = http.createServer(async (req, res) => {
   }
 })
 
+signalingHandle = attachLanSignaling(server)
+
 server.listen(PORT, HOST, () => {
   const displayHost = HOST === '0.0.0.0' ? 'localhost' : HOST
   console.log(`
   🚀 轻匣（LiteBox）独立生产服务已启动
   ➜  本地访问:   http://${displayHost}:${PORT}
+  ➜  无线信令:   ws://${displayHost}:${PORT}/ws/lan
   ➜  健康检查:   http://${displayHost}:${PORT}/healthz
-  ➜  静态目录:   ${DIST_DIR}
+  ➜  静态目录:   ${DIST_DIR}${HAS_DIST ? '' : '（未构建，仅信令可用）'}
   ➜  内容压缩:   ${ENABLE_COMPRESSION ? '已启用 Brotli (优先) + Gzip + 内存热缓存' : '已关闭（由前置代理接管）'}
 `)
 })
@@ -324,6 +338,7 @@ server.listen(PORT, HOST, () => {
 /** 优雅关闭服务 */
 const shutdown = (signal) => {
   console.log(`\n收到 ${signal} 信号，正在优雅关闭服务...`)
+  signalingHandle?.close()
   server.close(() => {
     console.log('服务已安全退出。')
     process.exit(0)

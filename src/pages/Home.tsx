@@ -5,6 +5,7 @@ import { categories, getTool, plannedTools, tools, type CategoryId, type ToolDef
 import { useSettings, useUI } from '@/stores/settings'
 import { cn, isMac } from '@/lib/utils'
 import { Kbd } from '@/components/ui/kbd'
+import { SiteFooter } from '@/components/AuthorLinks'
 import { PageContainer, SectionTitle, ToolGrid } from '@/components/ToolGrid'
 
 const examples = ['图片拼接', 'tppj', '压缩图片', 'JSON', '二维码', '时间戳']
@@ -144,6 +145,8 @@ export default function Home() {
         </div>
         <ToolGrid tools={shownTools} planned={shownPlanned} />
       </section>
+
+      <SiteFooter />
     </PageContainer>
   )
 }

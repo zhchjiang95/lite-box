@@ -14,11 +14,13 @@ import {
   FileDown,
   ImageDown,
   Minimize2,
+  MessageSquareText,
 } from 'lucide-react'
 import type { PlannedTool } from './types'
 
 /** 规划中的工具（首页以“即将上线”展示，实现后从此处移除即可）。完整清单见 TODO.md */
 export const plannedTools: PlannedTool[] = [
+  { name: '局域网临时聊天室', category: 'lan', icon: MessageSquareText, description: '免登录同网即聊，关闭即焚不留痕' },
   { name: 'Markdown 转 Word', category: 'word', icon: FileDown, description: 'AI 生成的 Markdown 一键转规范 .docx' },
   { name: 'Word 转 Markdown', category: 'word', icon: FileCode2, description: '保留标题、表格与图片转为干净 MD' },
   { name: 'Word 图片无损提取', category: 'word', icon: ImageDown, description: '一键提取 .docx 中全部高清原图' },

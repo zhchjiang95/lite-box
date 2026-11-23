@@ -42,3 +42,4 @@ PORT=8080 node index.mjs
 - **PWA 友好缓存**：`assets/*` 带哈希资源 1 年 `immutable` 强缓存；`index.html`、`sw.js`、`registerSW.js`、`manifest.webmanifest` 禁止强缓存以确保发版即更新。
 - **SPA 路由回退**：直接刷新 `/tools/:id`、`/category/:id` 自动回退到 `index.html`，缺失的 `.js/.png` 等资源准确返回 `404`。
 - **安全与运维**：路径穿越防护、安全响应头、`ETag` 304 协商缓存、`GET /healthz` 健康检查与 `SIGINT`/`SIGTERM` 优雅退出。
+- **零依赖原生 WebSocket 局域网信令（`ws://<host>/ws/lan`）**：见 `signaling.mjs`，支持按 `?channel=` 隔离不同局域网工具频道（`transfer` 隔空快传、`screen` 无线投屏、`clipboard` 共享剪贴板等），提供同局域网自动发现、唯一随机设备代号、投屏直播状态广播、离开即焚的内存剪贴板同步、6 位配对码跨网房间、WebRTC 信令交换以及极端网络下的纯内存二进制流中转兜底（绝不落盘）。若前置使用 Nginx 反向代理，请为 `/ws/lan` 配置 `Upgrade` / `Connection "upgrade"` 与 `X-Forwarded-For` 头。

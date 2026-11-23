@@ -77,7 +77,7 @@ src/
 │  └─ utils.ts                # 类名合并、字节格式化等
 ├─ pages/                     # 首页、分类页、收藏与最近、工具详情容器页、404
 ├─ registry/
-│  ├─ categories.ts           # 9 大工具分类定义与渐变色配置（含 Word 工具）
+│  ├─ categories.ts           # 10 大工具分类定义与渐变色配置（含 Word 工具、局域网互联）
 │  ├─ index.ts                # 核心：自动扫描 src/tools/*/meta.ts 生成工具注册表
 │  ├─ planned.ts              # “即将上线”工具预览列表
 │  └─ types.ts                # 工具与分类类型定义
@@ -194,11 +194,26 @@ src/
    │  ├─ sound.ts             # Web Audio 拨片/胜利音效合成与舞台内置礼花彩带粒子引擎
    │  ├─ WheelCanvas.tsx      # 高清 Canvas 幸运大转盘（跑马灯珠、弹性拨片、权重扇区）
    │  └─ index.tsx            # 大转盘/滚动点名双模式与全屏沉浸舞台工作台
-   └─ blackboard/             # 演示黑板 / 手绘白板
+   ├─ blackboard/             # 演示黑板 / 手绘白板
+   │  ├─ meta.ts              # 工具元数据
+   │  ├─ types.ts             # 4 套板面主题、辅助底纹与 1920×1080 逻辑元素模型
+   │  ├─ renderer.ts          # 贝塞尔手绘、矢量图形、多行文字、激光笔拖尾与高清 PNG 导出引擎
+   │  └─ index.tsx            # 单页全宽画板工作台与 PPT 式全屏沉浸放映模式
+   ├─ lan-transfer/           # 隔空快传 · 局域网文件共享
+   │  ├─ meta.ts              # 工具元数据
+   │  ├─ types.ts             # 设备识别、传输状态类型与无线晶体音效
+   │  ├─ engine.ts            # WebSocket 信令 + WebRTC P2P 直传 + 极端网络内存流中转兜底引擎
+   │  ├─ RadarStage.tsx       # 极光雷达脉冲、星轨设备节点、拖拽磁吸与贝塞尔能量光束舞台
+   │  └─ index.tsx            # 隔空接收弹窗、6 位配对码跨网连接与无线收件箱工作台
+   ├─ lan-screen/             # 局域网无线投屏
+   │  ├─ meta.ts              # 工具元数据
+   │  ├─ types.ts             # 4 档画质/帧率预设与实时链路遥测类型定义
+   │  ├─ engine.ts            # WebRTC 一投多并发推流、定向邀请与实时分辨率/帧率/RTT 遥测引擎
+   │  └─ index.tsx            # 推流控制台、附近直播发现与全屏/画中画/截屏影院观看台
+   └─ lan-clipboard/          # 局域网共享剪贴板
       ├─ meta.ts              # 工具元数据
-      ├─ types.ts             # 4 套板面主题、辅助底纹与 1920×1080 逻辑元素模型
-      ├─ renderer.ts          # 贝塞尔手绘、矢量图形、多行文字、激光笔拖尾与高清 PNG 导出引擎
-      └─ index.tsx            # 单页全宽画板工作台与 PPT 式全屏沉浸放映模式
+      ├─ types.ts             # 内容类型自动识别（链接/代码/文本）与截图轻量化压缩/复制工具
+      └─ index.tsx            # 多端实时同步剪贴板流、一键读剪贴板、置顶筛选与一键焚毁工作台
 ```
 
 ---
