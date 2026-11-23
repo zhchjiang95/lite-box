@@ -1,5 +1,4 @@
 User-agent: *
 Allow: /
 
-# 部署正式域名后，可取消下方注释并替换为你的真实站点地址
-# Sitemap: https://your-domain.com/sitemap.xml
+Sitemap: http://lb.fiume.cn:3000/
