@@ -235,11 +235,24 @@ src/
    │  ├─ meta.ts              # 工具元数据
    │  ├─ engine.ts            # OpenCC 7 套简繁词库转换、Ruby 注音流与多音字声韵母拆解引擎
    │  └─ index.tsx            # 简繁变动高亮、头顶注音打印卡、首字母提取与多音字查询工作台
-   └─ qrcode/                 # 二维码生成与识别
+   ├─ qrcode/                 # 二维码生成与识别
+   │  ├─ meta.ts              # 工具元数据
+   │  ├─ types.ts             # Wi-Fi/vCard/邮件/短信构造器、6 套美学预设、语义解析与对比度体检
+   │  ├─ engine.ts            # 自研 Canvas/无损矢量 SVG 双渲染器、批量 ZIP 打包与 BarcodeDetector/jsQR 离线解码引擎
+   │  └─ index.tsx            # 美化生成、批量打包与图片/剪贴板/摄像头离线扫码工作台
+   ├─ console-calc/           # 控制台计算器
+   │  ├─ meta.ts              # 工具元数据
+   │  ├─ engine.ts            # 零 eval 高精度十进制表达式解析器（支持中文变量/单位、百分比/取模、多进制、30+ 科学函数与草稿纸联动）
+   │  └─ index.tsx            # DevTools 风格实时预览 REPL 控制台与多行草稿纸双模式工作台
+   ├─ device-info/            # 设备信息与网速测试
+   │  ├─ meta.ts              # 工具元数据
+   │  ├─ collector.ts         # UA-CH/硬件/WebGL 显卡/刷新率/电池/存储/编解码与能力权限本地采集引擎
+   │  ├─ speedtest.ts         # 公网 Cloudflare 与自建 /api/speedtest/* 双引擎实时测速（Ping/抖动/上下行）与按需 IP 查询
+   │  └─ index.tsx            # 系统硬件全览、SVG 实时测速仪表盘与浏览器能力矩阵工作台
+   └─ sporttery-results/      # 竞彩赛果大宽表
       ├─ meta.ts              # 工具元数据
-      ├─ types.ts             # Wi-Fi/vCard/邮件/短信构造器、6 套美学预设、语义解析与对比度体检
-      ├─ engine.ts            # 自研 Canvas/无损矢量 SVG 双渲染器、批量 ZIP 打包与 BarcodeDetector/jsQR 离线解码引擎
-      └─ index.tsx            # 美化生成、批量打包与图片/剪贴板/摄像头离线扫码工作台
+      ├─ api.ts               # /api/sporttery/results 请求封装、联赛提取与 Excel CSV/TSV 导出引擎
+      └─ index.tsx            # 15 列冻结对阵大宽表、联赛自动补齐分页、搜索排序与统计概览工作台
 ```
 
 ---

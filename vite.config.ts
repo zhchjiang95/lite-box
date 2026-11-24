@@ -85,6 +85,7 @@ export default defineConfig({
           },
         ],
         navigateFallback: '/index.html',
+        navigateFallbackDenylist: [/^\/api\//, /^\/ws\//, /^\/healthz$/],
       },
     }),
   ],
@@ -94,11 +95,15 @@ export default defineConfig({
     },
   },
   server: {
-    // 开发期将局域网信令 WebSocket 代理到独立的 server/ 后端服务
+    // 开发期统一将局域网信令 WebSocket 与所有 /api/* 业务接口代理到独立的 server/ 后端服务
     proxy: {
       '/ws/lan': {
         target: 'ws://127.0.0.1:3000',
         ws: true,
+        changeOrigin: true,
+      },
+      '/api': {
+        target: 'http://127.0.0.1:3000',
         changeOrigin: true,
       },
     },
