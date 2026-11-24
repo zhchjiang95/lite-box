@@ -1,10 +1,11 @@
-import { PDFDocument, StandardFonts, degrees, rgb } from 'pdf-lib'
+import { PDFDocument, StandardFonts, degrees, rgb, type PDFPage } from 'pdf-lib'
 import { zip } from 'fflate'
-import { parsePageRanges } from '@/lib/pdf'
+import { openPdfDocument, parsePageRanges } from '@/lib/pdf'
 import {
   FONT_STACKS,
   formatPageNumber,
   type PdfWatermarkOptions,
+  type RedactMark,
 } from './types'
 
 interface StampImageAsset {
@@ -293,13 +294,142 @@ export function drawPreviewOverlay(
   ctx.restore()
 }
 
+/** 获取作用在指定页码（1-based）上的全部打码遮挡块 */
+export function getRedactionsForPage(marks: RedactMark[], pageNum1: number): RedactMark[] {
+  return marks.filter((m) => m.applyAllPages || m.page === pageNum1)
+}
+
 /**
- * 使用 pdf-lib 为单份 PDF 真正写入水印与页码（保留原 PDF 全部矢量文字与链接）
+ * 将 PDF.js 视图归一化坐标（左上角原点，已含旋转）换算为 pdf-lib 未旋转页面坐标系（左下角原点）
+ * 确保 0° / 90° / 180° / 270° 旋转的 PDF 页面打码位置 100% 精准零偏差
+ */
+function viewportNormRectToPdf(
+  mark: RedactMark,
+  page: PDFPage,
+): { x: number; y: number; w: number; h: number } {
+  const { width: rawW, height: rawH } = page.getSize()
+  const rot = ((page.getRotation().angle % 360) + 360) % 360
+
+  // 归一化矩形的 4 个角（视图坐标系：u 向右 0..1，v 向下 0..1）
+  const u1 = mark.x
+  const u2 = mark.x + mark.w
+  const v1 = mark.y
+  const v2 = mark.y + mark.h
+
+  const mapPoint = (u: number, v: number): [number, number] => {
+    switch (rot) {
+      case 90:
+        return [v * rawW, u * rawH]
+      case 180:
+        return [(1 - u) * rawW, v * rawH]
+      case 270:
+        return [(1 - v) * rawW, (1 - u) * rawH]
+      case 0:
+      default:
+        return [u * rawW, (1 - v) * rawH]
+    }
+  }
+
+  const pts = [mapPoint(u1, v1), mapPoint(u2, v1), mapPoint(u2, v2), mapPoint(u1, v2)]
+  const xs = pts.map((p) => p[0])
+  const ys = pts.map((p) => p[1])
+  const minX = Math.min(...xs)
+  const maxX = Math.max(...xs)
+  const minY = Math.min(...ys)
+  const maxY = Math.max(...ys)
+  return { x: minX, y: minY, w: maxX - minX, h: maxY - minY }
+}
+
+/** 在 PDF 页面上写入纯色矢量打码块 */
+function drawRedactionVectorOnPdfPage(page: PDFPage, mark: RedactMark) {
+  const rect = viewportNormRectToPdf(mark, page)
+  const fill = hexToRgb(mark.color)
+  if (mark.shape === 'ellipse') {
+    page.drawEllipse({
+      x: rect.x + rect.w / 2,
+      y: rect.y + rect.h / 2,
+      xScale: rect.w / 2,
+      yScale: rect.h / 2,
+      color: fill,
+      opacity: 1,
+    })
+  } else {
+    page.drawRectangle({
+      x: rect.x,
+      y: rect.y,
+      width: rect.w,
+      height: rect.h,
+      color: fill,
+      opacity: 1,
+    })
+  }
+}
+
+/**
+ * 将包含打码块的单页以高清位图烘焙（防复制彻底抹除底层敏感文字），
+ * 返回可直接覆盖整页的 PNG 字节以及展示视图尺寸
+ */
+async function bakeRedactedPageToPng(
+  pdfJsDoc: Awaited<ReturnType<typeof openPdfDocument>>['doc'],
+  pageNum1: number,
+  pageMarks: RedactMark[],
+): Promise<{ pngBytes: Uint8Array; viewW: number; viewH: number }> {
+  const page = await pdfJsDoc.getPage(pageNum1)
+  const baseVp = page.getViewport({ scale: 1 })
+  // 2.4× 高清倍率（上限 2400px 防超大图内存飙升），既清晰锐利又兼顾文件体积
+  const renderScale = Math.min(2.4, 2400 / Math.max(baseVp.width, baseVp.height))
+  const vp = page.getViewport({ scale: renderScale })
+
+  const canvas = document.createElement('canvas')
+  canvas.width = Math.max(1, Math.round(vp.width))
+  canvas.height = Math.max(1, Math.round(vp.height))
+  const ctx = canvas.getContext('2d')!
+  ctx.fillStyle = '#ffffff'
+  ctx.fillRect(0, 0, canvas.width, canvas.height)
+
+  await page.render({ canvasContext: ctx, viewport: vp, canvas }).promise
+  page.cleanup()
+
+  // 将所有打码色块直接烧录进像素，彻底销毁底层敏感信息
+  for (const m of pageMarks) {
+    ctx.save()
+    ctx.fillStyle = m.color
+    const px = m.x * canvas.width
+    const py = m.y * canvas.height
+    const pw = m.w * canvas.width
+    const ph = m.h * canvas.height
+    if (m.shape === 'ellipse') {
+      ctx.beginPath()
+      ctx.ellipse(px + pw / 2, py + ph / 2, pw / 2, ph / 2, 0, 0, Math.PI * 2)
+      ctx.fill()
+    } else {
+      ctx.fillRect(px, py, pw, ph)
+    }
+    ctx.restore()
+  }
+
+  const blob = await new Promise<Blob>((resolve, reject) =>
+    canvas.toBlob((b) => (b ? resolve(b) : reject(new Error(`第 ${pageNum1} 页脱敏烘焙失败`))), 'image/jpeg', 0.94),
+  )
+  canvas.width = 0
+  canvas.height = 0
+  return {
+    pngBytes: new Uint8Array(await blob.arrayBuffer()),
+    viewW: baseVp.width,
+    viewH: baseVp.height,
+  }
+}
+
+/**
+ * 使用 pdf-lib 为单份 PDF 真正写入打码遮挡、水印与页码
+ * - 普通模式：保留原 PDF 全部矢量文字与链接，以矢量纯色块覆盖
+ * - 防复制物理抹除模式（opts.flattenRedactedPages）：仅对存在打码块的页面进行高清位图烘焙替换，无打码页仍保持原矢量无损
  */
 export async function applyWatermarkToPdf(
   rawBytes: Uint8Array,
   opts: PdfWatermarkOptions,
   logo: ImageBitmap | null,
+  redactions: RedactMark[] = [],
 ): Promise<Blob> {
   let pdfDoc: PDFDocument
   try {
@@ -308,8 +438,36 @@ export async function applyWatermarkToPdf(
     throw new Error('该 PDF 已加密或受权限保护，无法直接修改')
   }
 
+  const totalPages = pdfDoc.getPageCount()
+
+  // 0. 若开启“物理抹除底层文字”且存在打码块，仅将有打码的页面替换为烘焙后的干净图像页
+  let openedForBake: Awaited<ReturnType<typeof openPdfDocument>> | null = null
+  const bakedPageIndices = new Set<number>()
+  if (opts.flattenRedactedPages && redactions.length > 0) {
+    try {
+      openedForBake = await openPdfDocument(rawBytes)
+      for (let i = 0; i < totalPages; i++) {
+        const pageMarks = getRedactionsForPage(redactions, i + 1)
+        if (!pageMarks.length) continue
+        const baked = await bakeRedactedPageToPng(openedForBake.doc, i + 1, pageMarks)
+        const embImg = await pdfDoc.embedJpg(baked.pngBytes)
+        // 删除原含敏感文字的页面并在原索引插入纯净位图页
+        pdfDoc.removePage(i)
+        const freshPage = pdfDoc.insertPage(i, [baked.viewW, baked.viewH])
+        freshPage.drawImage(embImg, {
+          x: 0,
+          y: 0,
+          width: baked.viewW,
+          height: baked.viewH,
+        })
+        bakedPageIndices.add(i)
+      }
+    } finally {
+      if (openedForBake) await openedForBake.destroy()
+    }
+  }
+
   const pages = pdfDoc.getPages()
-  const totalPages = pages.length
 
   // 1. 构建并全局嵌入一次水印印章对象（全文档复用，体积几乎不膨胀）
   let stampAsset: StampImageAsset | null = null
@@ -328,7 +486,7 @@ export async function applyWatermarkToPdf(
   const helvetica = opts.enablePageNum && isAsciiPageNum ? await pdfDoc.embedFont(StandardFonts.Helvetica) : null
   const pageNumRgb = hexToRgb(opts.pageNumColor)
 
-  // 3. 逐页绘制水印与页码
+  // 3. 逐页绘制打码遮挡（矢量模式）、水印与页码
   const opacity = Math.max(0.03, Math.min(1, opts.opacity / 100))
   // PDF 坐标系 Y 轴朝上，逆时针为正；因此 Canvas 顺时针角度 angle 在 PDF 中取 -angle
   const pdfAngleDeg = -opts.angle
@@ -337,6 +495,14 @@ export async function applyWatermarkToPdf(
   for (let i = 0; i < totalPages; i++) {
     const page = pages[i]
     const { width: pageW, height: pageH } = page.getSize()
+
+    // 写入纯色打码遮挡（若该页已经位图烘焙则无需重复画）
+    if (!bakedPageIndices.has(i) && redactions.length > 0) {
+      const pageMarks = getRedactionsForPage(redactions, i + 1)
+      for (const mark of pageMarks) {
+        drawRedactionVectorOnPdfPage(page, mark)
+      }
+    }
 
     // 写入水印
     if (embeddedStamp && stampAsset && shouldApplyWatermarkOnPage(i, totalPages, opts)) {
@@ -414,9 +580,9 @@ export async function applyWatermarkToPdf(
   return new Blob([buf], { type: 'application/pdf' })
 }
 
-/** 批量为多份 PDF 加水印/页码并打包 ZIP */
+/** 批量为多份 PDF 加打码/水印/页码并打包 ZIP */
 export async function applyWatermarkBatchZip(
-  items: { name: string; bytes: Uint8Array }[],
+  items: { name: string; bytes: Uint8Array; redactions?: RedactMark[] }[],
   opts: PdfWatermarkOptions,
   logo: ImageBitmap | null,
   onProgress?: (done: number, total: number) => void,
@@ -426,11 +592,12 @@ export async function applyWatermarkBatchZip(
 
   for (let i = 0; i < items.length; i++) {
     const it = items[i]
-    const blob = await applyWatermarkToPdf(it.bytes, opts, logo)
+    const blob = await applyWatermarkToPdf(it.bytes, opts, logo, it.redactions ?? [])
     const base = it.name.replace(/\.pdf$/i, '') || `doc-${i + 1}`
-    const rawName = `${base}-水印.pdf`
+    const suffix = it.redactions?.length && !opts.enableWatermark && !opts.enablePageNum ? '打码' : '处理'
+    const rawName = `${base}-${suffix}.pdf`
     const count = used.get(rawName) ?? 0
-    const finalName = count > 0 ? `${base}-水印-${count + 1}.pdf` : rawName
+    const finalName = count > 0 ? `${base}-${suffix}-${count + 1}.pdf` : rawName
     used.set(rawName, count + 1)
     entries[finalName] = new Uint8Array(await blob.arrayBuffer())
     onProgress?.(i + 1, items.length)

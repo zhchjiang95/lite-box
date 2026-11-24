@@ -44,8 +44,8 @@
   - *技术方案*：`pdf-lib` + 全站统一图片解码器（`src/lib/image.ts`）
 - [x] **PDF 转图片（`pdf-to-image`）**：将 PDF 逐页渲染为 1×–3× 超清 PNG / JPG / WebP，支持单页复制/下载、按页码范围勾选打包 ZIP，或一键拼接为纵向长图
   - *技术方案*：`pdfjs-dist`（本地离线 Worker + 懒渲染缩略图）+ Canvas 长图合成 + `fflate`
-- [x] **PDF 加水印 / 页码（`pdf-watermark`）**：为 PDF 批量添加中文/英文/Emoji 多行文字或透明 Logo 水印（全屏斜向错行平铺或九宫格定位）及 6 方位中英文页码（支持跳过首页封面），实时翻页预览与批量 ZIP 打包
-  - *技术方案*：`pdf-lib`（全文档复用单份 3× 超清透明 PNG 印章无损写入，完美支持中文且原矢量文字不失真）+ `pdfjs-dist` + `fflate`
+- [x] **PDF 水印、页码与打码（`pdf-watermark`）**：为 PDF 批量添加中文/英文/Emoji 多行文字或透明 Logo 水印（全屏斜向错行平铺或九宫格定位）、6 方位中英文页码（支持跳过首页封面），并支持在预览画布直接绘制矩形/圆形纯色遮挡打码（含白底涂改液、拖动与四角缩放、Shift 锁正圆/正方形、单页/应用全部页、Ctrl+Z 撤销，及可选“彻底抹除底层文字”防复制高清栅格化烘焙），实时翻页预览与批量 ZIP 打包
+  - *技术方案*：`pdf-lib`（全文档复用 3× 超清透明 PNG 印章 + 旋转页精准矢量/物理烘焙双模式打码）+ `pdfjs-dist` + `fflate`
 - [x] **身份证 / 证件正反面 A4 排版打印（`id-card-print`）**：支持普通锁定比例裁剪与四点透视拉直（带 3× 精准放大镜），一键 1:1 国标物理尺寸（85.6×54mm，兼容驾驶证/护照/户口本/自定义）排版至 A4 纸（标准上下居中/一页双份/并排/横向），内置扫描增白与黑白复印滤镜、防盗用途签注水印，支持导出 1:1 A4 PDF、直接打印与导出 300 DPI 高清图
   - *技术方案*：Canvas 2D 单应性矩阵（Homography）四点透视矫正 + 双线性插值 + `pdf-lib` 精确毫米定位
 
@@ -102,7 +102,7 @@
 
 ## 六、编码加密（`encode`）
 
-- [ ] **Base64 编解码（`base64`）**：支持 UTF-8 文本与图片 / 任意文件转 DataURL Base64，支持预览解码后的图片或下载文件
+- [x] **Base64 编解码（`base64`）**：支持 UTF-8 中文/Emoji 文本与标准/URL-Safe Base64 双向互转（支持去填充、76 字符换行与逐行批处理），支持拖放/粘贴图片或任意文件一键生成 DataURL / 纯 Base64 / HTML `<img>` / CSS `url()`，以及粘贴无前缀 Base64 通过文件头魔数自动识别 PNG/JPG/WebP/SVG/PDF/音视频/二进制并预览下载还原
 - [ ] **URL 编解码与参数解析（`url-codec`）**：`encodeURI` / `encodeURIComponent` 互转，并将 URL Query 参数解析为可编辑表格，改完实时重拼 URL
 - [ ] **哈希计算（`hash`）**：支持文本与大文件分片计算 MD5、SHA-1、SHA-256、SHA-384、SHA-512、CRC32，支持 HMAC
   - *技术方案*：原生 `SubtleCrypto` + `hash-wasm`（高速 WASM，支持大文件流式分块计算）
@@ -115,10 +115,11 @@
 ## 七、开发工具（`dev`）
 
 - [ ] **JSON 格式化与校验（`json-format`）**：格式化、压缩、语法错误精准定位、Key 排序、转义/去转义、树形折叠视图、JSONPath 查询
-- [ ] **JSON 与 TypeScript / YAML / CSV / TOML 互转（`data-convert`）**：JSON 一键生成 TypeScript 类型接口、或与 YAML/CSV 表格互转
+- [x] **JSON 与 TypeScript / YAML / CSV / TOML 互转（`data-convert`）**：支持 JSON、YAML、TOML、CSV/TSV 5 种源格式自动识别与双向互转，一键生成合并异构数组推断可选字段的 TypeScript 接口与 Zod Schema，支持点号嵌套展平/反展平、Key 排序、语法高亮、可视化表格预览、文件拖放及 Excel 兼容 CSV 导出
+  - *技术方案*：`js-yaml` + `smol-toml` + RFC 4180 CSV 状态机 + 自研 AST 级 TS/Zod 推断引擎 + `highlight.js` 按需高亮
 - [ ] **时间戳转换（`timestamp`）**：实时 Unix 秒/毫秒时间戳、与本地/UTC/任意时区日期互转、常用相对时间计算
 - [ ] **正则表达式测试（`regex-tester`）**：实时匹配高亮、捕获组详情展示、常用正则速查库（邮箱、手机号、身份证、URL、IPv4 等）
-- [ ] **颜色空间转换与对比度检查（`color-converter`）**：HEX、RGB、HSL、OKLCH、CMYK 实时互转，搭配 WCAG 文字背景对比度无障碍检测与渐变生成
+- [x] **颜色空间转换与对比度检查（`color-converter`）**：支持 HEX(3/4/6/8)、RGB/RGBA、HSL/HSLA、OKLCH（含正向/逆向矩阵与 sRGB 色域溢出检测）、CMYK、HSV 与 CSS 命名色实时双向互转，内置屏幕吸管取色、OKLCH 11 阶设计色板（一键导出 CSS 变量 / Tailwind v4 `@theme`）、和谐配色推荐、WCAG 2.1 无障碍对比度体检与“保持色相一键修正至 AA/AAA 达标”，以及支持 `in oklch` 插值的现代 CSS 渐变生成器与 1600×900 PNG 导出
 - [ ] **Cron 表达式生成与解析（`cron-parser`）**：可视化配置 Cron 表达式，语义化中文解释并列出未来 10 次执行时间
 - [ ] **代码压缩与美化（`code-format`）**：HTML / CSS / JS / SQL 格式化与压缩
 - [ ] **HTTP 状态码 / MIME 类型 / 键码速查（`dev-cheatsheet`）**：支持快速检索的离线速查表与键盘 `KeyboardEvent` 按键检测器
@@ -129,8 +130,8 @@
 
 - [x] **二维码生成与识别（`qrcode`）**：支持 5 类内容模板（网址/文本、Wi-Fi 连网、电子名片 vCard、邮件、短信/电话）、6 套预设、5 种码点（含液态连接/圆点/菱形）、3 种码眼、线性渐变与透明底、嵌入中心 Logo（自动升 H 容错并安全镂空）、底部文字标注、可读性对比度体检、高清 PNG / 无损矢量 SVG 导出及多行批量打包 ZIP；支持拖放/粘贴图片（含 HEIC）与摄像头离线扫码识别，并可一键回填二次美化
   - *技术方案*：`qrcode` 矩阵 + 自研 Canvas/SVG 双渲染器 + `fflate` 批量打包 + 原生 `BarcodeDetector` / `jsqr` 多尺度反色离线解码
-- [ ] **条形码生成（`barcode`）**：支持 CODE128、EAN-13、UPC 等常见条形码生成与导出
-  - *技术方案*：`jsbarcode`
+- [x] **条形码生成（`barcode`）**：支持 CODE128 / 128B / 128C、EAN-13、EAN-8、UPC-A、CODE39、ITF-14、ITF、MSI、Codabar、Pharmacode 等 12 种国际条码制式，内置 GS1 Modulo-10 校验码自动补全与一键修正、随机合法示例、条纹/字号/透明底/印刷级 3× PNG 与无损 SVG 导出、连号流水号批量生成 ZIP 及多列 A4 标签直接打印
+  - *技术方案*：`jsbarcode` + `fflate` 批量打包 + 原生矢量打印视图
 - [ ] **随机密码与密钥生成器（`password-generator`）**：基于密码学安全随机数 `crypto.getRandomValues`，可定制长度、字符集、排除易混淆字符、批量生成与熵值强度评估
 - [ ] **UUID / ULID / NanoID 批量生成（`uuid-generator`）**：支持 UUID v4 / v7、ULID、自定义字母表 NanoID 批量生成与复制
 - [ ] **占位图生成（`placeholder-image`）**：自定义尺寸、背景色/渐变、文字内容与字号，一键生成开发测试用占位图（PNG / SVG / DataURL）

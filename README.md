@@ -168,11 +168,12 @@ src/
    │  ├─ engine.ts            # 高倍渲染单页、批量打包 ZIP 与纵向超清长图合成引擎
    │  ├─ PageCard.tsx         # IntersectionObserver 懒渲染页面卡片（勾选/复制/下载/放大）
    │  └─ index.tsx            # PDF 转图工作台与高清预览弹窗
-   ├─ pdf-watermark/          # PDF 加水印与页码
+   ├─ pdf-watermark/          # PDF 水印、页码与打码
    │  ├─ meta.ts              # 工具元数据
-   │  ├─ types.ts             # 水印模板、九宫格锚点与中英文页码配置类型
-   │  ├─ engine.ts            # 3× 超清中文/Logo 透明印章嵌入、无损平铺/页码写入与批量 ZIP
-   │  └─ index.tsx            # 实时翻页叠加预览与多文档批量工作台
+   │  ├─ types.ts             # 水印模板、九宫格锚点、页码与矩形/圆形打码遮挡配置类型
+   │  ├─ engine.ts            # 3× 超清中文/Logo 印章、无损矢量/物理防复制打码、页码写入与批量 ZIP
+   │  ├─ RedactOverlay.tsx    # 画布交互式矩形/圆形纯色遮挡绘制、拖动、四角缩放与全页生效编辑层
+   │  └─ index.tsx            # 实时翻页叠加预览、画布快捷打码与多文档批量工作台
    ├─ id-card-print/          # 身份证 / 证件正反面 A4 排版打印
    │  ├─ meta.ts              # 工具元数据
    │  ├─ types.ts             # 国标证件尺寸预设、A4 排版模式与防盗水印配置类型
@@ -249,10 +250,27 @@ src/
    │  ├─ collector.ts         # UA-CH/硬件/WebGL 显卡/刷新率/电池/存储/编解码与能力权限本地采集引擎
    │  ├─ speedtest.ts         # 公网 Cloudflare 与自建 /api/speedtest/* 双引擎实时测速（Ping/抖动/上下行）与按需 IP 查询
    │  └─ index.tsx            # 系统硬件全览、SVG 实时测速仪表盘与浏览器能力矩阵工作台
-   └─ sporttery-results/      # 竞彩赛果大宽表
+   ├─ sporttery-results/      # 竞彩赛果大宽表
+   │  ├─ meta.ts              # 工具元数据
+   │  ├─ api.ts               # /api/sporttery/results 请求封装、联赛提取与 Excel CSV/TSV 导出引擎
+   │  └─ index.tsx            # 15 列冻结对阵大宽表、联赛自动补齐分页、搜索排序与统计概览工作台
+   ├─ barcode/                # 条形码生成
+   │  ├─ meta.ts              # 工具元数据
+   │  ├─ types.ts             # 12 种国际条码制式规范、GS1 校验位自动补全/修正、预设与可读性体检
+   │  ├─ engine.ts            # 基于 jsbarcode 的高清 PNG / 无损矢量 SVG 渲染、批量 ZIP 与 A4 标签打印引擎
+   │  └─ index.tsx            # 单码精调、连号流水批量生成与实时预览工作台
+   ├─ data-convert/           # JSON 多格式互转
+   │  ├─ meta.ts              # 工具元数据
+   │  ├─ engine.ts            # JSON/YAML/TOML/CSV/TSV 解析序列化、TS/Zod AST 类型推断与表格数据提取引擎
+   │  └─ index.tsx            # 双栏实时互转、语法高亮、表格预览与文件拖放工作台
+   ├─ color-converter/        # 颜色转换与对比度检查
+   │  ├─ meta.ts              # 工具元数据
+   │  ├─ engine.ts            # HEX/RGB/HSL/OKLCH/CMYK/HSV 双向转换、OKLCH 11 阶色板、WCAG 2.1 自动达标修正与渐变引擎
+   │  └─ index.tsx            # 多空间实时互转、WCAG 无障碍排版体检与现代 CSS 渐变生成工作台
+   └─ base64/                 # Base64 编解码
       ├─ meta.ts              # 工具元数据
-      ├─ api.ts               # /api/sporttery/results 请求封装、联赛提取与 Excel CSV/TSV 导出引擎
-      └─ index.tsx            # 15 列冻结对阵大宽表、联赛自动补齐分页、搜索排序与统计概览工作台
+      ├─ engine.ts            # 大字节分块 UTF-8/URL-Safe 编解码、文件头魔数自动识别与 Hex Dump 引擎
+      └─ index.tsx            # 文本编解码、图片/文件转 DataURL 及魔数识别还原预览三合一工作台
 ```
 
 ---

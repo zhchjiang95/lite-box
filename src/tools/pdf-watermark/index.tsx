@@ -3,18 +3,23 @@ import {
   Archive,
   ChevronLeft,
   ChevronRight,
+  Circle,
   Download,
+  EyeOff,
   FilePlus2,
   FileText,
   Grid3x3,
   Hash,
   Image as ImageIcon,
   Loader2,
+  MousePointer2,
   Move,
   ShieldCheck,
   Sparkles,
+  Square,
   Trash2,
   Type,
+  Undo2,
   Upload,
   X,
 } from 'lucide-react'
@@ -30,18 +35,22 @@ import { downloadBlob, timestampName } from '@/lib/file'
 import { IMAGE_ACCEPT, decodeImageFile } from '@/lib/image'
 import { isPdfFile, openPdfDocument, renderPdfPageToDataUrl, type OpenedPdf } from '@/lib/pdf'
 import { cn, formatBytes, uid } from '@/lib/utils'
-import { applyWatermarkBatchZip, applyWatermarkToPdf, drawPreviewOverlay } from './engine'
+import { applyWatermarkBatchZip, applyWatermarkToPdf, drawPreviewOverlay, getRedactionsForPage } from './engine'
+import { RedactOverlay } from './RedactOverlay'
 import {
   ANCHOR_GRID,
   PAGENUM_POSITIONS,
   PAGENUM_STYLES,
   PDF_WM_PRESETS,
+  REDACT_COLOR_PRESETS,
   defaultPdfWatermarkOptions,
   type ApplyScope,
   type FontStyle,
   type PageNumPos,
   type PageNumStyle,
   type PdfWatermarkOptions,
+  type RedactMark,
+  type RedactTool,
   type WatermarkLayout,
   type WatermarkType,
 } from './types'
@@ -67,6 +76,13 @@ export default function PdfWatermark() {
   const [loadingPdf, setLoadingPdf] = useState(false)
   const [exporting, setExporting] = useState(false)
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null)
+
+  // ===== 内容打码遮挡状态（按文档 ID 独立存储） =====
+  const [redactTool, setRedactTool] = useState<RedactTool>('select')
+  const [redactColor, setRedactColor] = useState('#000000')
+  const [redactAllPages, setRedactAllPages] = useState(false)
+  const [redactionsByDoc, setRedactionsByDoc] = useState<Record<string, RedactMark[]>>({})
+  const [selectedMarkId, setSelectedMarkId] = useState<string | null>(null)
 
   const overlayCanvasRef = useRef<HTMLCanvasElement>(null)
   const docsRef = useRef(new Map<string, OpenedPdf>())
@@ -136,6 +152,12 @@ export default function PdfWatermark() {
       void d.destroy()
       docsRef.current.delete(id)
     }
+    setRedactionsByDoc((prev) => {
+      const next = { ...prev }
+      delete next[id]
+      return next
+    })
+    setSelectedMarkId(null)
     setEntries((prev) => {
       const rest = prev.filter((e) => e.id !== id)
       setSelectedId((cur) => (cur === id ? (rest[0]?.id ?? null) : cur))
@@ -148,10 +170,102 @@ export default function PdfWatermark() {
     docsRef.current.forEach((d) => void d.destroy())
     docsRef.current.clear()
     setEntries([])
+    setRedactionsByDoc({})
+    setSelectedMarkId(null)
     setSelectedId(null)
     setPageBgUrl('')
     setPreviewPage(1)
   }
+
+  // 当前文档的打码遮挡操作辅助函数
+  const currentDocMarks = useMemo(
+    () => (selected ? (redactionsByDoc[selected.id] ?? []) : []),
+    [selected, redactionsByDoc],
+  )
+  const currentPageMarks = useMemo(
+    () => getRedactionsForPage(currentDocMarks, previewPage),
+    [currentDocMarks, previewPage],
+  )
+  const totalRedactionCount = useMemo(
+    () => Object.values(redactionsByDoc).reduce((sum, list) => sum + list.length, 0),
+    [redactionsByDoc],
+  )
+
+  const addRedaction = useCallback(
+    (mark: RedactMark) => {
+      if (!selected) return
+      setRedactionsByDoc((prev) => ({
+        ...prev,
+        [selected.id]: [...(prev[selected.id] ?? []), mark],
+      }))
+    },
+    [selected],
+  )
+
+  const updateRedaction = useCallback(
+    (id: string, patch: Partial<RedactMark>) => {
+      if (!selected) return
+      setRedactionsByDoc((prev) => ({
+        ...prev,
+        [selected.id]: (prev[selected.id] ?? []).map((m) => (m.id === id ? { ...m, ...patch } : m)),
+      }))
+    },
+    [selected],
+  )
+
+  const deleteRedaction = useCallback(
+    (id: string) => {
+      if (!selected) return
+      setRedactionsByDoc((prev) => ({
+        ...prev,
+        [selected.id]: (prev[selected.id] ?? []).filter((m) => m.id !== id),
+      }))
+      setSelectedMarkId((cur) => (cur === id ? null : cur))
+    },
+    [selected],
+  )
+
+  const undoLastRedaction = useCallback(() => {
+    if (!selected) return
+    setRedactionsByDoc((prev) => {
+      const list = prev[selected.id] ?? []
+      if (!list.length) return prev
+      const popped = list[list.length - 1]
+      setSelectedMarkId((cur) => (cur === popped.id ? null : cur))
+      return { ...prev, [selected.id]: list.slice(0, -1) }
+    })
+  }, [selected])
+
+  const clearCurrentPageRedactions = () => {
+    if (!selected) return
+    setRedactionsByDoc((prev) => ({
+      ...prev,
+      [selected.id]: (prev[selected.id] ?? []).filter((m) => m.page !== previewPage && !m.applyAllPages),
+    }))
+    setSelectedMarkId(null)
+  }
+
+  const clearDocRedactions = () => {
+    if (!selected) return
+    setRedactionsByDoc((prev) => ({ ...prev, [selected.id]: [] }))
+    setSelectedMarkId(null)
+  }
+
+  // 支持 Ctrl/⌘ + Z 撤销最近绘制的打码块
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null
+      if (target && /INPUT|TEXTAREA/.test(target.tagName)) return
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z' && !e.shiftKey) {
+        if (currentDocMarks.length > 0) {
+          e.preventDefault()
+          undoLastRedaction()
+        }
+      }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [currentDocMarks.length, undoLastRedaction])
 
   const loadLogoFile = async (file: File) => {
     try {
@@ -174,6 +288,11 @@ export default function PdfWatermark() {
       setLogo(null)
     }
   }
+
+  // 切换文档或翻页时清空选中态，避免误删非当前页打码块
+  useEffect(() => {
+    setSelectedMarkId(null)
+  }, [selected?.id, previewPage])
 
   // 切换文档或翻页时渲染当前 PDF 页面的预览底图
   useEffect(() => {
@@ -227,10 +346,12 @@ export default function PdfWatermark() {
   }, [selected, previewPage, pageSizePt, opts, logo])
 
   /** 导出当前单份 PDF 或批量打包 ZIP */
+  const canExport = opts.enableWatermark || opts.enablePageNum || totalRedactionCount > 0
+
   const onExport = async () => {
     if (!entries.length) return
-    if (!opts.enableWatermark && !opts.enablePageNum) {
-      toast.info('请至少开启“水印”或“页码”其中一项')
+    if (!canExport) {
+      toast.info('请至少开启“水印”、“页码”或绘制一个打码遮挡块')
       return
     }
     setExporting(true)
@@ -238,20 +359,22 @@ export default function PdfWatermark() {
     try {
       if (entries.length === 1) {
         const item = entries[0]
-        const blob = await applyWatermarkToPdf(item.bytes, opts, logo?.bitmap ?? null)
+        const docMarks = redactionsByDoc[item.id] ?? []
+        const blob = await applyWatermarkToPdf(item.bytes, opts, logo?.bitmap ?? null, docMarks)
         const base = item.name.replace(/\.pdf$/i, '') || 'document'
-        downloadBlob(blob, `${base}-水印.pdf`)
+        const suffix = docMarks.length > 0 && !opts.enableWatermark && !opts.enablePageNum ? '打码' : '处理'
+        downloadBlob(blob, `${base}-${suffix}.pdf`)
         toast.success(`导出成功 · ${formatBytes(blob.size)}`)
       } else {
         setProgress({ done: 0, total: entries.length })
         const zipBlob = await applyWatermarkBatchZip(
-          entries.map((e) => ({ name: e.name, bytes: e.bytes })),
+          entries.map((e) => ({ name: e.name, bytes: e.bytes, redactions: redactionsByDoc[e.id] ?? [] })),
           opts,
           logo?.bitmap ?? null,
           (done, total) => setProgress({ done, total }),
         )
-        downloadBlob(zipBlob, timestampName(`轻匣-PDF加水印${entries.length}份`, 'zip'))
-        toast.success(`已为 ${entries.length} 份 PDF 添加水印并打包 ZIP · ${formatBytes(zipBlob.size)}`)
+        downloadBlob(zipBlob, timestampName(`轻匣-PDF处理${entries.length}份`, 'zip'))
+        toast.success(`已处理 ${entries.length} 份 PDF 并打包 ZIP · ${formatBytes(zipBlob.size)}`)
       }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'PDF 导出失败')
@@ -270,14 +393,14 @@ export default function PdfWatermark() {
           multiple
           pasteable={false}
           onFiles={addPdfFiles}
-          title={loadingPdf ? '正在解析 PDF 文档…' : '拖放一份或多份 PDF 到这里，添加水印或页码'}
-          hint="原生支持中文/Emoji 多行水印与透明 Logo，支持全屏斜向平铺与公文页码，原文件文字完全无损"
+          title={loadingPdf ? '正在解析 PDF 文档…' : '拖放一份或多份 PDF 到这里，加水印、页码或打码遮挡'}
+          hint="支持中英文/Logo 水印、公文页码，以及在预览画布直接绘制矩形/圆形纯色打码（可选防复制彻底抹除）"
         />
         <div className="grid gap-3 sm:grid-cols-3">
           {[
-            { icon: <ShieldCheck />, t: '原文档矢量无损', d: '直接嵌入轻量水印层，原有文字依旧清晰可选可复制' },
-            { icon: <Grid3x3 />, t: '支持中文与 Logo 水印', d: '全屏斜向错行平铺或九宫格精准定位，内置保密/合同模板' },
-            { icon: <Hash />, t: '公文级页码排版', d: '6 方位页码、5 种中英文格式，支持跳过封面与批量打包' },
+            { icon: <EyeOff />, t: '内容打码脱敏', d: '直接在页面上绘制矩形、圆形纯色遮挡（含白底涂改液），可选彻底抹除底层防复制文字' },
+            { icon: <Grid3x3 />, t: '中文与 Logo 水印', d: '全屏斜向错行平铺或九宫格精准定位，内置保密/合同模板，原文件文字无损' },
+            { icon: <Hash />, t: '公文级页码排版', d: '6 方位页码、5 种中英文格式，支持跳过封面与多文档批量打包' },
           ].map((f, i) => (
             <motion.div
               key={f.t}
@@ -302,6 +425,97 @@ export default function PdfWatermark() {
 
   const panel = (
     <>
+      {/* ==================== 内容打码遮挡工具 ==================== */}
+      <div className="space-y-3.5 border-b pb-5">
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="text-foreground/90 flex items-center gap-1.5 text-sm font-semibold">
+              <EyeOff className="text-primary size-4" />
+              <span>内容打码遮挡</span>
+            </div>
+            <div className="text-muted-foreground text-xs">在右侧预览页直接拖拽绘制纯色遮挡</div>
+          </div>
+          {currentDocMarks.length > 0 && (
+            <span className="bg-primary/12 text-primary rounded-full px-2 py-0.5 font-mono text-[11px] font-semibold">
+              {currentDocMarks.length} 处
+            </span>
+          )}
+        </div>
+
+        <Segmented<RedactTool>
+          size="sm"
+          value={redactTool}
+          onChange={setRedactTool}
+          options={[
+            { value: 'select', label: '选择调整', icon: <MousePointer2 className="!size-3.5" /> },
+            { value: 'rect', label: '画矩形', icon: <Square className="!size-3.5" /> },
+            { value: 'ellipse', label: '画圆形', icon: <Circle className="!size-3.5" /> },
+          ]}
+        />
+
+        <Field
+          label="遮挡纯色"
+          value={redactColor.toLowerCase() === '#ffffff' ? '纯白（涂改液）' : redactColor.toUpperCase()}
+        >
+          <ColorPicker
+            value={redactColor}
+            onChange={(v) => setRedactColor(v === 'transparent' ? '#000000' : v)}
+            presets={REDACT_COLOR_PRESETS}
+          />
+        </Field>
+
+        {selected && selected.numPages > 1 && (
+          <div className="flex items-center justify-between gap-2">
+            <div>
+              <div className="text-foreground/80 text-xs font-medium">新绘制自动应用全部页</div>
+              <div className="text-muted-foreground text-[11px]">适合统一遮挡每页固定页眉/编号</div>
+            </div>
+            <Switch checked={redactAllPages} onChange={setRedactAllPages} label="新绘制自动应用全部页" />
+          </div>
+        )}
+
+        <div className="bg-foreground/[0.03] space-y-1.5 rounded-xl border p-2.5">
+          <div className="flex items-center justify-between gap-2">
+            <span className="flex items-center gap-1.5 text-xs font-medium">
+              <ShieldCheck className="size-3.5 text-emerald-600 dark:text-emerald-400" />
+              彻底抹除底层文字（防复制）
+            </span>
+            <Switch
+              checked={opts.flattenRedactedPages}
+              onChange={(v) => set('flattenRedactedPages', v)}
+              label="彻底抹除底层文字"
+            />
+          </div>
+          <p className="text-muted-foreground text-[11px] leading-relaxed">
+            {opts.flattenRedactedPages
+              ? '已开启：仅将有打码的页面高清栅格化烘焙，底层敏感文字彻底不可选中复制；其余页面仍保持矢量无损。'
+              : '默认矢量色块遮挡，体积最小；若涉高度敏感信息，建议开启上方防复制物理抹除。'}
+          </p>
+        </div>
+
+        {currentDocMarks.length > 0 && (
+          <div className="flex flex-wrap gap-1.5">
+            <Button size="sm" variant="outline" className="h-7 flex-1 text-xs" onClick={undoLastRedaction}>
+              <Undo2 className="!size-3.5" />
+              撤销
+            </Button>
+            {currentPageMarks.length > 0 && (
+              <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={clearCurrentPageRedactions}>
+                清本页 ({currentPageMarks.length})
+              </Button>
+            )}
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-7 text-xs text-rose-500 hover:text-rose-600"
+              onClick={clearDocRedactions}
+            >
+              清全部
+            </Button>
+          </div>
+        )}
+      </div>
+
       {/* ==================== 水印层开关与设置 ==================== */}
       <div className="space-y-4">
         <div className="flex items-center justify-between">
@@ -589,12 +803,7 @@ export default function PdfWatermark() {
   )
 
   const actions = (
-    <Button
-      variant="primary"
-      size="lg"
-      onClick={onExport}
-      disabled={exporting || (!opts.enableWatermark && !opts.enablePageNum)}
-    >
+    <Button variant="primary" size="lg" onClick={onExport} disabled={exporting || !canExport}>
       {exporting ? <Loader2 className="animate-spin" /> : entries.length > 1 ? <Archive /> : <Download />}
       {progress
         ? `处理中 ${progress.done}/${progress.total}…`
@@ -602,12 +811,14 @@ export default function PdfWatermark() {
           ? '正在生成 PDF…'
           : entries.length > 1
             ? `批量导出 ZIP（${entries.length} 份）`
-            : '导出带水印 PDF'}
+            : totalRedactionCount > 0 && !opts.enableWatermark && !opts.enablePageNum
+              ? '导出打码 PDF'
+              : '导出处理后 PDF'}
     </Button>
   )
 
   return (
-    <ToolShell panel={panel} actions={actions} panelTitle="水印与页码设置">
+    <ToolShell panel={panel} actions={actions} panelTitle="打码、水印与页码设置">
       <div className="space-y-4">
         {/* 顶栏信息与翻页器 */}
         {selected && (
@@ -667,11 +878,72 @@ export default function PdfWatermark() {
           </div>
         )}
 
-        {/* 所见即所得实时预览画布（PDF 底图 + 实时叠加层） */}
+        {/* 画布快捷打码工具条（就在预览正上方，随手切换矩形/圆形/涂黑/涂白与撤销） */}
+        {selected && (
+          <div className="glass flex flex-wrap items-center justify-between gap-2 rounded-2xl px-3 py-2 text-xs">
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className="text-muted-foreground mr-0.5 hidden font-medium sm:inline">画布打码：</span>
+              {(
+                [
+                  { id: 'select', label: '选择', icon: <MousePointer2 className="size-3.5" /> },
+                  { id: 'rect', label: '矩形遮挡', icon: <Square className="size-3.5" /> },
+                  { id: 'ellipse', label: '圆形遮挡', icon: <Circle className="size-3.5" /> },
+                ] as const
+              ).map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => setRedactTool(item.id)}
+                  className={cn(
+                    'inline-flex items-center gap-1 rounded-xl px-2.5 py-1 font-medium transition',
+                    redactTool === item.id
+                      ? 'bg-primary text-primary-foreground shadow-xs'
+                      : 'bg-foreground/[0.05] text-muted-foreground hover:text-foreground',
+                  )}
+                >
+                  {item.icon}
+                  {item.label}
+                </button>
+              ))}
+
+              <div className="bg-border mx-1 h-4 w-px" />
+
+              {REDACT_COLOR_PRESETS.slice(0, 4).map((c) => (
+                <button
+                  key={c}
+                  type="button"
+                  title={c === '#000000' ? '纯黑打码' : c === '#ffffff' ? '纯白涂改液' : c}
+                  onClick={() => setRedactColor(c)}
+                  className={cn(
+                    'size-5 rounded-full border border-black/20 transition-transform hover:scale-110 dark:border-white/20',
+                    redactColor.toLowerCase() === c && 'ring-primary ring-offset-background ring-2 ring-offset-1',
+                  )}
+                  style={{ backgroundColor: c }}
+                />
+              ))}
+            </div>
+
+            <div className="text-muted-foreground flex items-center gap-2">
+              <span className="hidden md:inline">
+                {redactTool === 'select'
+                  ? '点选色块可拖动/四角缩放'
+                  : '在页面拖拽绘制（按住 Shift 锁正圆/正方形）'}
+              </span>
+              {currentDocMarks.length > 0 && (
+                <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={undoLastRedaction}>
+                  <Undo2 className="!size-3.5" />
+                  撤销
+                </Button>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* 所见即所得实时预览画布（PDF 底图 + 交互式打码遮挡层 + 水印页码叠加层） */}
         <div className="checkerboard shadow-soft relative flex h-[min(68dvh,720px)] min-h-[340px] w-full items-center justify-center overflow-hidden rounded-3xl border p-4 sm:p-6">
           {pageBgUrl ? (
             <div
-              className="relative max-h-full max-w-full overflow-hidden rounded-sm bg-white shadow-2xl"
+              className="relative max-h-full max-w-full rounded-sm bg-white shadow-2xl"
               style={{
                 aspectRatio: `${pageSizePt.w} / ${pageSizePt.h}`,
                 height: pageSizePt.h >= pageSizePt.w ? '100%' : undefined,
@@ -682,12 +954,28 @@ export default function PdfWatermark() {
                 src={pageBgUrl}
                 alt={`第 ${previewPage} 页预览`}
                 draggable={false}
-                className="block size-full object-contain"
+                className="block size-full rounded-sm object-contain"
               />
+              {/* 交互式矩形/圆形打码遮挡层 */}
+              {selected && (
+                <RedactOverlay
+                  page={previewPage}
+                  totalPages={selected.numPages}
+                  marks={currentPageMarks}
+                  tool={redactTool}
+                  drawColor={redactColor}
+                  defaultAllPages={redactAllPages}
+                  selectedMarkId={selectedMarkId}
+                  onSelectMark={setSelectedMarkId}
+                  onAddMark={addRedaction}
+                  onUpdateMark={updateRedaction}
+                  onDeleteMark={deleteRedaction}
+                />
+              )}
               {/* 实时水印与页码 Canvas 覆盖层 */}
               <canvas
                 ref={overlayCanvasRef}
-                className="pointer-events-none absolute inset-0 size-full"
+                className="pointer-events-none absolute inset-0 z-20 size-full"
               />
             </div>
           ) : (
@@ -700,11 +988,15 @@ export default function PdfWatermark() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="bg-background/40 absolute inset-0 flex items-center justify-center backdrop-blur-[1px]"
+                className="bg-background/40 absolute inset-0 z-30 flex items-center justify-center backdrop-blur-[1px]"
               >
                 <div className="glass shadow-lift flex items-center gap-2 rounded-full px-4 py-2 text-xs font-medium">
                   <Loader2 className="text-primary size-4 animate-spin" />
-                  {exporting ? '正在写入 PDF 水印与页码…' : '正在渲染页面…'}
+                  {exporting
+                    ? opts.flattenRedactedPages && totalRedactionCount > 0
+                      ? '正在高清脱敏烘焙并写入 PDF…'
+                      : '正在写入 PDF 打码、水印与页码…'
+                    : '正在渲染页面…'}
                 </div>
               </motion.div>
             )}

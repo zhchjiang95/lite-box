@@ -7,6 +7,27 @@ export type FontStyle = 'sans' | 'serif' | 'mono'
 export type PageNumStyle = 'n/total' | 'n' | '-n-' | 'zh-n' | 'zh-n/total'
 export type PageNumPos = 'bl' | 'bc' | 'br' | 'tl' | 'tc' | 'tr'
 export type ApplyScope = 'all' | 'skip-first' | 'custom'
+export type RedactShape = 'rect' | 'ellipse'
+export type RedactTool = 'select' | 'rect' | 'ellipse'
+
+/** 单个 PDF 打码遮挡块（归一化页面坐标 0..1，相对当前页面展示宽高） */
+export interface RedactMark {
+  id: string
+  /** 归属页码（1-based） */
+  page: number
+  /** 是否同步应用到该文档的全部页面（如统一遮挡页眉/编号） */
+  applyAllPages: boolean
+  /** 遮挡形状：矩形或圆形/椭圆 */
+  shape: RedactShape
+  x: number
+  y: number
+  w: number
+  h: number
+  /** 纯色填充（如 #000000 机密涂黑、#ffffff 涂改液白底） */
+  color: string
+}
+
+export const REDACT_COLOR_PRESETS = ['#000000', '#ffffff', '#1e293b', '#64748b', '#dc2626', '#2563eb']
 
 export interface PdfWatermarkOptions {
   /** 是否启用水印层 */
@@ -51,6 +72,9 @@ export interface PdfWatermarkOptions {
   /** 水印生效页面范围 */
   scope: ApplyScope
   customRange: string
+
+  /** 打码导出时是否对含遮挡块的页面进行高清栅格化以物理抹除底层文字（防复制/防移开） */
+  flattenRedactedPages: boolean
 }
 
 export const defaultPdfWatermarkOptions: PdfWatermarkOptions = {
@@ -82,6 +106,7 @@ export const defaultPdfWatermarkOptions: PdfWatermarkOptions = {
 
   scope: 'all',
   customRange: '1-5',
+  flattenRedactedPages: false,
 }
 
 export const PDF_WM_PRESETS: { id: string; label: string; desc: string; patch: Partial<PdfWatermarkOptions> }[] = [
