@@ -333,28 +333,45 @@ export async function runSpeedTest(
   }
 }
 
+/** 安全提取非空字符串（防止外部接口返回嵌套对象直接渲染触发 React #31） */
+function asCleanString(val: unknown): string | undefined {
+  if (typeof val === 'string') {
+    const trimmed = val.trim()
+    return trimmed || undefined
+  }
+  return undefined
+}
+
+/** 格式化 Cloudflare 机房字段（兼容纯三字码字符串与 { iata, city, cca2, region } 对象） */
+function formatColoValue(val: unknown): string | undefined {
+  if (typeof val === 'string') return asCleanString(val)
+  if (val && typeof val === 'object') {
+    const obj = val as Record<string, unknown>
+    const iata = asCleanString(obj.iata)
+    const city = asCleanString(obj.city)
+    const cca2 = asCleanString(obj.cca2)
+    if (iata && city) return `${iata} (${city})`
+    return iata || city || cca2
+  }
+  return undefined
+}
+
 /** 按需手动探测公网出口 IP（不自动调用，尊重隐私） */
 export async function fetchPublicIpInfo(): Promise<PublicIpInfo> {
-  // 优先 Cloudflare trace（纯文本极速且 CORS 友好，同时给出边缘机房 colo）
+  // 优先 Cloudflare speed meta（CORS 友好，含出口 IP、运营商与最近边缘机房）
   try {
     const res = await fetch('https://speed.cloudflare.com/meta', { cache: 'no-store' })
     if (res.ok) {
-      const data = (await res.json()) as {
-        clientIp?: string
-        city?: string
-        region?: string
-        country?: string
-        asOrganization?: string
-        colo?: string
-      }
-      if (data.clientIp) {
+      const data = (await res.json()) as Record<string, unknown>
+      const ip = asCleanString(data.clientIp)
+      if (ip) {
         return {
-          ip: data.clientIp,
-          city: data.city,
-          region: data.region,
-          country: data.country,
-          org: data.asOrganization,
-          colo: data.colo,
+          ip,
+          city: asCleanString(data.city),
+          region: asCleanString(data.region),
+          country: asCleanString(data.country),
+          org: asCleanString(data.asOrganization),
+          colo: formatColoValue(data.colo),
         }
       }
     }
@@ -364,8 +381,10 @@ export async function fetchPublicIpInfo(): Promise<PublicIpInfo> {
 
   const res = await fetch('https://api.ipify.org?format=json', { cache: 'no-store' })
   if (!res.ok) throw new Error('公网 IP 查询失败')
-  const data = (await res.json()) as { ip: string }
-  return { ip: data.ip }
+  const data = (await res.json()) as Record<string, unknown>
+  const ip = asCleanString(data.ip)
+  if (!ip) throw new Error('未能解析到有效的公网 IP')
+  return { ip }
 }
 
 /** 宽带体验智能评级 */
