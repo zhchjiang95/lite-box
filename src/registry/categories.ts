@@ -8,6 +8,7 @@ import {
   Code2,
   Sparkles,
   Clapperboard,
+  CalendarDays,
   Coffee,
 } from 'lucide-react'
 import type { Category, CategoryId } from './types'
@@ -23,6 +24,7 @@ export const categories: Category[] = [
   { id: 'dev', name: '开发工具', description: 'JSON、正则、时间戳、颜色', icon: Code2, gradient: ['#6366f1', '#06b6d4'] },
   { id: 'generate', name: '生成器', description: '二维码、密码、UUID、占位图', icon: Sparkles, gradient: ['#f59e0b', '#ef4444'] },
   { id: 'media', name: '音视频', description: '格式转换、剪辑、提取', icon: Clapperboard, gradient: ['#d946ef', '#8b5cf6'] },
+  { id: 'calendar', name: '日历历法', description: '万年历、节气、节假日、星座', icon: CalendarDays, gradient: ['#f43f5e', '#f59e0b'] },
   { id: 'life', name: '生活实用', description: '计算器、换算、随机决策', icon: Coffee, gradient: ['#84cc16', '#10b981'] },
 ]
 

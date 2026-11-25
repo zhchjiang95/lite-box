@@ -101,6 +101,9 @@ importers:
       tailwind-merge:
         specifier: ^3.7.0
         version: 3.7.0
+      tyme4ts:
+        specifier: ^1.5.6
+        version: 1.5.6
       upng-js:
         specifier: ^2.1.0
         version: 2.1.0
@@ -2727,6 +2730,9 @@ packages:
 
   tslib@2.9.1:
     resolution: {integrity: sha512-a4Ux9VKuIMHsOS7ENbEq6hK2ZGYIT27Rtl0E4eD9KqwxhKiQeMZE/9xb3IdYwWaSOyIBQLExhQgXDTYoiCxnWA==}
+
+  tyme4ts@1.5.6:
+    resolution: {integrity: sha512-duqoMhKeqTta5/e62fz6Vov1mulM6QLhbpkTvsUBF185zjfyxlmoxLaCrp94p66Q7w72yqE3RSO/7GnCY3pyLA==}
 
   type-fest@0.16.0:
     resolution: {integrity: sha512-eaBzG6MxNzEn9kiwvtre90cXaNLkmadMWa1zQMs3XORCXNbsH/OewwbxC5ia9dCxIxnTAsSxXJaa/p5y8DlvJg==}
@@ -5626,6 +5632,8 @@ snapshots:
   tslib@1.14.1: {}
 
   tslib@2.9.1: {}
+
+  tyme4ts@1.5.6: {}
 
   type-fest@0.16.0: {}
 

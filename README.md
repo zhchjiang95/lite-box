@@ -77,7 +77,7 @@ src/
 │  └─ utils.ts                # 类名合并、字节格式化等
 ├─ pages/                     # 首页、分类页、收藏与最近、工具详情容器页、404
 ├─ registry/
-│  ├─ categories.ts           # 10 大工具分类定义与渐变色配置（含 Word 工具、局域网互联）
+│  ├─ categories.ts           # 11 大工具分类定义与渐变色配置（含 Word 工具、局域网互联、日历历法）
 │  ├─ index.ts                # 核心：自动扫描 src/tools/*/meta.ts 生成工具注册表
 │  ├─ planned.ts              # “即将上线”工具预览列表
 │  └─ types.ts                # 工具与分类类型定义
@@ -267,10 +267,27 @@ src/
    │  ├─ meta.ts              # 工具元数据
    │  ├─ engine.ts            # HEX/RGB/HSL/OKLCH/CMYK/HSV 双向转换、OKLCH 11 阶色板、WCAG 2.1 自动达标修正与渐变引擎
    │  └─ index.tsx            # 多空间实时互转、WCAG 无障碍排版体检与现代 CSS 渐变生成工作台
-   └─ base64/                 # Base64 编解码
+   ├─ base64/                 # Base64 编解码
+   │  ├─ meta.ts              # 工具元数据
+   │  ├─ engine.ts            # 大字节分块 UTF-8/URL-Safe 编解码、文件头魔数自动识别与 Hex Dump 引擎
+   │  └─ index.tsx            # 文本编解码、图片/文件转 DataURL 及魔数识别还原预览三合一工作台
+   ├─ legal-holidays/         # 法定节假日与拼假攻略
+   │  ├─ meta.ts              # 工具元数据
+   │  ├─ engine.ts            # 基于 tyme4ts 的全年休/班聚合、智能拼假推荐、自定义年假连休统计与 RFC 5545 ICS 导出引擎
+   │  └─ index.tsx            # 下个假期倒计时、拼假攻略卡片、全年 12 月试请年假日历与补班速查工作台
+   ├─ solar-terms/            # 二十四节气与物候指南
+   │  ├─ meta.ts              # 工具元数据
+   │  ├─ engine.ts            # 基于 tyme4ts 的百年节气秒级交节计算、七十二候、数九三伏梅雨提取与 24 节气民俗词典
+   │  └─ index.tsx            # 交互式黄道星盘、秒级交节倒计时、七十二候全表与传统周期时间轴工作台
+   ├─ zodiac-constellation/   # 星座、生肖与干支星宿
+   │  ├─ meta.ts              # 工具元数据
+   │  ├─ data.ts              # 十二星座、十二生肖、五行生克、二十八星宿、八大月相与十二时辰传统文化辞典
+   │  ├─ engine.ts            # 基于 tyme4ts 的公农历双向换算、星座交界检测、双口径生肖、八字排盘与 Markdown 报告引擎
+   │  └─ index.tsx            # 双历法生辰输入、SVG 月相渲染、四柱排盘、星座图鉴与二十八宿四象图谱工作台
+   └─ perpetual-calendar/     # 万年历与传统黄历
       ├─ meta.ts              # 工具元数据
-      ├─ engine.ts            # 大字节分块 UTF-8/URL-Safe 编解码、文件头魔数自动识别与 Hex Dump 引擎
-      └─ index.tsx            # 文本编解码、图片/文件转 DataURL 及魔数识别还原预览三合一工作台
+      ├─ engine.ts            # 基于 tyme4ts 的 6×7 月视图矩阵、老黄历宜忌/冲煞/方位/九星/十二时辰、多历法互转与农历生日 ICS 引擎
+      └─ index.tsx            # 双栏万年历与择日筛选、五历法实时互转及农历生日查未来公历工作台
 ```
 
 ---
