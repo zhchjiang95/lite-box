@@ -296,6 +296,17 @@ function deselectAllTorrentFiles(torrent) {
         }
       }
     }
+    // 彻底清空底层分片优先级队列并向已连节点声明 uninterested，避免解析后偷跑流量
+    if (torrent._selections && Array.isArray(torrent._selections._items)) {
+      torrent._selections._items.length = 0
+    }
+    if (Array.isArray(torrent.wires)) {
+      for (const wire of torrent.wires) {
+        if (typeof wire.uninterested === 'function') {
+          wire.uninterested()
+        }
+      }
+    }
   } catch {
     // 忽略元数据尚未就绪时的状态
   }
@@ -305,7 +316,20 @@ function deselectAllTorrentFiles(torrent) {
 function focusSingleFile(task, fileIndex) {
   const { torrent } = task
   if (!torrent || !Array.isArray(torrent.files)) return
+  if (task.paused && typeof torrent.resume === 'function') {
+    torrent.resume()
+    task.paused = false
+  }
   if (task.activeFileIndex === fileIndex) return
+  // 切换文件时先清理旧文件的转码进程，避免后台残留继续下载旧集
+  for (const proc of task.transcodeProcs) {
+    try {
+      proc.kill('SIGKILL')
+    } catch {
+      // 忽略
+    }
+  }
+  task.transcodeProcs.clear()
   deselectAllTorrentFiles(torrent)
   const target = torrent.files[fileIndex]
   if (target && typeof target.select === 'function') {
@@ -313,6 +337,47 @@ function focusSingleFile(task, fileIndex) {
     target.select()
   }
   task.activeFileIndex = fileIndex
+}
+
+/** 停止并取消当前任务正在进行的下载/流式传输（保留种子文件列表以便重新选片） */
+function stopTaskDownload(infoHash) {
+  const hash = infoHash.toLowerCase()
+  const task = tasks.get(hash)
+  if (!task) return null
+
+  // 1. 强杀所有 ffmpeg 转码子进程
+  for (const proc of task.transcodeProcs) {
+    try {
+      proc.kill('SIGKILL')
+    } catch {
+      // 忽略
+    }
+  }
+  task.transcodeProcs.clear()
+
+  // 2. 强制中断所有正在进行中的 HTTP 流读取
+  for (const abortStream of Array.from(task.activeStreamCleanups)) {
+    try {
+      abortStream()
+    } catch {
+      // 忽略
+    }
+  }
+  task.activeStreamCleanups.clear()
+
+  // 3. 取消全部文件与分片选择并暂停 torrent 连接
+  deselectAllTorrentFiles(task.torrent)
+  if (typeof task.torrent.pause === 'function') {
+    try {
+      task.torrent.pause()
+    } catch {
+      // 忽略
+    }
+  }
+  task.paused = true
+  task.activeFileIndex = null
+  task.lastAccessAt = Date.now()
+  return serializeTask(task)
 }
 
 /** 序列化单个任务供前端展示 */
@@ -343,6 +408,7 @@ function serializeTask(task) {
   return {
     infoHash: task.infoHash,
     name: torrent.name || task.fallbackName || `磁力任务 ${task.infoHash.slice(0, 8)}`,
+    magnetURI: torrent.magnetURI || `magnet:?xt=urn:btih:${task.infoHash}`,
     ready: Boolean(torrent.ready && files.length > 0),
     progress: Number.isFinite(torrent.progress) ? torrent.progress : 0,
     downloaded: torrent.downloaded || 0,
@@ -351,7 +417,9 @@ function serializeTask(task) {
     downloadSpeed: torrent.downloadSpeed || 0,
     uploadSpeed: torrent.uploadSpeed || 0,
     numPeers: torrent.numPeers || 0,
+    paused: Boolean(task.paused),
     activeFileIndex: task.activeFileIndex,
+    activeStreams: task.activeStreams,
     activeTranscodes: task.transcodeProcs.size,
     createdAt: task.createdAt,
     lastAccessAt: task.lastAccessAt,
@@ -367,7 +435,7 @@ async function destroyTask(infoHash) {
   if (!task) return false
   tasks.delete(hash)
 
-  // 1. 强杀该任务关联的所有 ffmpeg 子进程
+  // 1. 强杀该任务关联的所有 ffmpeg 子进程与在飞流读取
   for (const proc of task.transcodeProcs) {
     try {
       proc.kill('SIGKILL')
@@ -376,6 +444,14 @@ async function destroyTask(infoHash) {
     }
   }
   task.transcodeProcs.clear()
+  for (const abortStream of Array.from(task.activeStreamCleanups)) {
+    try {
+      abortStream()
+    } catch {
+      // 忽略
+    }
+  }
+  task.activeStreamCleanups.clear()
 
   // 2. 销毁 torrent 实例及存储
   await new Promise((resolve) => {
@@ -582,8 +658,10 @@ async function addMagnetTask({ magnet, torrentBase64, fileName }) {
         fallbackName,
         createdAt: Date.now(),
         lastAccessAt: Date.now(),
+        paused: false,
         activeFileIndex: null,
         activeStreams: 0,
+        activeStreamCleanups: new Set(),
         transcodeProcs: new Set(),
       }
       tasks.set(hash, entry)
@@ -603,6 +681,15 @@ async function addMagnetTask({ magnet, torrentBase64, fileName }) {
       deselectAllTorrentFiles(torrent)
       const entry = bindTask()
       if (entry) {
+        // 默认就绪后先暂停下载，等待用户主动选择文件播放后再恢复，做到 0 后台偷跑磁盘
+        if (entry.activeFileIndex === null && typeof torrent.pause === 'function') {
+          try {
+            torrent.pause()
+            entry.paused = true
+          } catch {
+            // 忽略
+          }
+        }
         finish(null, serializeTask(entry))
       }
     })
@@ -679,6 +766,7 @@ function handleNativeStream(req, res, task, file, fileIndex) {
   const cleanup = () => {
     if (cleaned) return
     cleaned = true
+    task.activeStreamCleanups.delete(forceAbort)
     task.activeStreams = Math.max(0, task.activeStreams - 1)
     task.lastAccessAt = Date.now()
     try {
@@ -687,6 +775,16 @@ function handleNativeStream(req, res, task, file, fileIndex) {
       // 忽略
     }
   }
+
+  const forceAbort = () => {
+    cleanup()
+    try {
+      if (!res.destroyed) res.destroy()
+    } catch {
+      // 忽略
+    }
+  }
+  task.activeStreamCleanups.add(forceAbort)
 
   stream.on('error', (err) => {
     cleanup()
@@ -916,6 +1014,23 @@ export async function handleMagnetRoutes(req, res, pathname, parsedUrl) {
     sendJson(req, res, 200, {
       ok: true,
       clearedTasks: allHashes.length,
+      disk: getDiskStats(),
+    })
+    return true
+  }
+
+  // 5.5 停止并取消单个任务正在进行的下载/播放（保留种子与文件清单）
+  const stopMatch = pathname.match(/^\/api\/magnet\/tasks\/([a-f0-9]{40})\/stop$/i)
+  if (stopMatch && req.method === 'POST') {
+    const hash = stopMatch[1].toLowerCase()
+    const updated = stopTaskDownload(hash)
+    if (!updated) {
+      sendJson(req, res, 404, { code: 404, message: '任务不存在或已被清理' })
+      return true
+    }
+    sendJson(req, res, 200, {
+      ok: true,
+      task: updated,
       disk: getDiskStats(),
     })
     return true

@@ -43,6 +43,7 @@ export interface MagnetFileItem {
 export interface MagnetTaskItem {
   infoHash: string
   name: string
+  magnetURI?: string
   ready: boolean
   progress: number
   downloaded: number
@@ -51,7 +52,9 @@ export interface MagnetTaskItem {
   downloadSpeed: number
   uploadSpeed: number
   numPeers: number
+  paused?: boolean
   activeFileIndex: number | null
+  activeStreams?: number
   activeTranscodes: number
   createdAt: number
   lastAccessAt: number
@@ -59,7 +62,32 @@ export interface MagnetTaskItem {
   files: MagnetFileItem[]
 }
 
+/** 本地播放记录与断点续播条目 */
+export interface MagnetHistoryItem {
+  infoHash: string
+  name: string
+  magnetURI: string
+  fileIndex: number | null
+  fileName: string | null
+  playMode: PlayMode
+  /** 上次播放到的秒数 */
+  currentTime: number
+  /** 视频总时长秒数 */
+  duration: number
+  updatedAt: number
+}
+
+/** 当前选中会话快照（用于刷新页面恢复状态） */
+export interface MagnetSessionSnapshot {
+  infoHash: string
+  fileIndex: number
+  playMode: PlayMode
+}
+
 const TOKEN_STORAGE_KEY = 'litebox.magnet.token'
+const HISTORY_STORAGE_KEY = 'litebox.magnet.history.v1'
+const SESSION_STORAGE_KEY = 'litebox.magnet.session.v1'
+const MAX_HISTORY_ITEMS = 25
 
 /** 合法开源公有领域测试磁力（Blender Foundation 开源短片 Sintel，官方 WebTorrent 示例） */
 export const DEMO_OPENSOURCE_MAGNET =
@@ -81,6 +109,93 @@ export function saveToken(token: string) {
   } catch {
     // 忽略隐私模式存储限制
   }
+}
+
+export function loadHistory(): MagnetHistoryItem[] {
+  try {
+    const raw = localStorage.getItem(HISTORY_STORAGE_KEY)
+    if (!raw) return []
+    const parsed = JSON.parse(raw)
+    return Array.isArray(parsed) ? parsed : []
+  } catch {
+    return []
+  }
+}
+
+export function saveHistory(list: MagnetHistoryItem[]) {
+  try {
+    localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(list.slice(0, MAX_HISTORY_ITEMS)))
+  } catch {
+    // 忽略存储空间不足
+  }
+}
+
+export function upsertHistoryItem(
+  prev: MagnetHistoryItem[],
+  patch: Partial<MagnetHistoryItem> & { infoHash: string },
+): MagnetHistoryItem[] {
+  const hash = patch.infoHash.toLowerCase()
+  const existing = prev.find((item) => item.infoHash === hash)
+  const merged: MagnetHistoryItem = {
+    infoHash: hash,
+    name: patch.name ?? existing?.name ?? `磁力任务 ${hash.slice(0, 8)}`,
+    magnetURI: patch.magnetURI || existing?.magnetURI || `magnet:?xt=urn:btih:${hash}`,
+    fileIndex: patch.fileIndex !== undefined ? patch.fileIndex : (existing?.fileIndex ?? null),
+    fileName: patch.fileName !== undefined ? patch.fileName : (existing?.fileName ?? null),
+    playMode: patch.playMode ?? existing?.playMode ?? 'native',
+    currentTime: patch.currentTime !== undefined ? patch.currentTime : (existing?.currentTime ?? 0),
+    duration: patch.duration !== undefined ? patch.duration : (existing?.duration ?? 0),
+    updatedAt: Date.now(),
+  }
+  const next = [merged, ...prev.filter((item) => item.infoHash !== hash)].slice(
+    0,
+    MAX_HISTORY_ITEMS,
+  )
+  saveHistory(next)
+  return next
+}
+
+export function loadSessionSnapshot(): MagnetSessionSnapshot | null {
+  try {
+    const raw = localStorage.getItem(SESSION_STORAGE_KEY)
+    if (!raw) return null
+    const parsed = JSON.parse(raw)
+    if (
+      parsed &&
+      typeof parsed.infoHash === 'string' &&
+      typeof parsed.fileIndex === 'number'
+    ) {
+      return {
+        infoHash: parsed.infoHash,
+        fileIndex: parsed.fileIndex,
+        playMode:
+          parsed.playMode === 'remux' || parsed.playMode === 'compat' ? parsed.playMode : 'native',
+      }
+    }
+  } catch {
+    // 忽略
+  }
+  return null
+}
+
+export function saveSessionSnapshot(snap: MagnetSessionSnapshot | null) {
+  try {
+    if (snap) localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(snap))
+    else localStorage.removeItem(SESSION_STORAGE_KEY)
+  } catch {
+    // 忽略
+  }
+}
+
+export function formatPlaybackTime(sec: number): string {
+  if (!Number.isFinite(sec) || sec < 0) return '00:00'
+  const total = Math.floor(sec)
+  const h = Math.floor(total / 3600)
+  const m = Math.floor((total % 3600) / 60)
+  const s = total % 60
+  const mm = String(m).padStart(2, '0')
+  const ss = String(s).padStart(2, '0')
+  return h > 0 ? `${h}:${mm}:${ss}` : `${mm}:${ss}`
 }
 
 async function requestJson<T>(url: string, token: string, init: RequestInit = {}): Promise<T> {
@@ -139,6 +254,14 @@ export function createMagnetTask(
     method: 'POST',
     body: JSON.stringify(payload),
   })
+}
+
+export function stopMagnetTaskDownload(token: string, infoHash: string) {
+  return requestJson<{ ok: boolean; task: MagnetTaskItem; disk: DiskStats }>(
+    `/api/magnet/tasks/${infoHash}/stop`,
+    token,
+    { method: 'POST' },
+  )
 }
 
 export function deleteMagnetTask(token: string, infoHash: string) {

@@ -10,6 +10,7 @@ import {
   FileVideo,
   FolderArchive,
   HardDrive,
+  History,
   KeyRound,
   Loader2,
   Lock,
@@ -18,11 +19,13 @@ import {
   RefreshCw,
   ShieldAlert,
   ShieldCheck,
+  Square,
   Subtitles,
   Trash2,
   Upload,
   Users,
   WifiOff,
+  XCircle,
   Zap,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -41,12 +44,20 @@ import {
   fetchMagnetTasks,
   formatBytes,
   formatIdleTime,
+  formatPlaybackTime,
   formatSpeed,
+  loadHistory,
   loadSavedToken,
+  loadSessionSnapshot,
+  saveHistory,
+  saveSessionSnapshot,
   saveToken,
+  stopMagnetTaskDownload,
+  upsertHistoryItem,
   verifyMagnetToken,
   type DiskStats,
   type MagnetFileItem,
+  type MagnetHistoryItem,
   type MagnetServiceStatus,
   type MagnetTaskItem,
   type PlayMode,
@@ -91,18 +102,25 @@ export default function MagnetPlayerTool() {
   const [onlyShowVideos, setOnlyShowVideos] = useState<boolean>(true)
   const [isDraggingTorrent, setIsDraggingTorrent] = useState<boolean>(false)
 
-  // 播放器状态
+  // 播放器状态与历史记录
   const [selectedHash, setSelectedHash] = useState<string | null>(null)
   const [selectedFileIndex, setSelectedFileIndex] = useState<number | null>(null)
   const [playMode, setPlayMode] = useState<PlayMode>('native')
+  const [shouldAutoPlay, setShouldAutoPlay] = useState<boolean>(false)
   const [videoError, setVideoError] = useState<string | null>(null)
   const [selectedSubtitleIndex, setSelectedSubtitleIndex] = useState<number | 'none' | 'local'>('none')
   const [localSubUrl, setLocalSubUrl] = useState<string | null>(null)
   const [localSubName, setLocalSubName] = useState<string>('')
+  const [history, setHistory] = useState<MagnetHistoryItem[]>(() => loadHistory())
+  const [rightTab, setRightTab] = useState<'tasks' | 'history'>('tasks')
+  const [restoredNotice, setRestoredNotice] = useState<string | null>(null)
 
   const torrentFileInputRef = useRef<HTMLInputElement | null>(null)
   const localSubInputRef = useRef<HTMLInputElement | null>(null)
   const videoRef = useRef<HTMLVideoElement | null>(null)
+  const restoredSessionRef = useRef<boolean>(false)
+  const pendingSeekRef = useRef<{ infoHash: string; fileIndex: number; time: number } | null>(null)
+  const lastProgressSaveRef = useRef<number>(0)
 
   // 检测是否处于外网非本机访问
   const isRemoteHost = useMemo(() => {
@@ -134,6 +152,60 @@ export default function MagnetPlayerTool() {
         setTasks(res.tasks)
         setDisk(res.disk)
         setPollPaused(false)
+
+        // 首次加载（例如刷新页面后）：若后端仍保留上次播放的任务与缓存，自动恢复选片与断点位置（不自动出声）
+        if (!restoredSessionRef.current && res.tasks.length > 0) {
+          restoredSessionRef.current = true
+          const savedSnap = loadSessionSnapshot()
+          const histList = loadHistory()
+
+          let targetTask: MagnetTaskItem | undefined
+          let targetIndex: number | null = null
+          let targetMode: PlayMode = 'native'
+
+          if (savedSnap) {
+            const matched = res.tasks.find((t) => t.infoHash === savedSnap.infoHash && t.ready)
+            if (matched && matched.files.some((f) => f.index === savedSnap.fileIndex)) {
+              targetTask = matched
+              targetIndex = savedSnap.fileIndex
+              targetMode = savedSnap.playMode
+            }
+          }
+          if (!targetTask) {
+            const backendActive = res.tasks.find((t) => t.ready && t.activeFileIndex !== null)
+            if (backendActive && backendActive.activeFileIndex !== null) {
+              targetTask = backendActive
+              targetIndex = backendActive.activeFileIndex
+              const matchedFile = backendActive.files.find((f) => f.index === targetIndex)
+              targetMode =
+                matchedFile && !matchedFile.browserNativePlayable && st.ffmpegAvailable
+                  ? 'remux'
+                  : 'native'
+            }
+          }
+
+          if (targetTask && targetIndex !== null) {
+            setSelectedHash(targetTask.infoHash)
+            setSelectedFileIndex(targetIndex)
+            setPlayMode(targetMode !== 'native' && !st.ffmpegAvailable ? 'native' : targetMode)
+            setShouldAutoPlay(false)
+            const histItem = histList.find(
+              (h) => h.infoHash === targetTask.infoHash && h.fileIndex === targetIndex,
+            )
+            if (histItem && histItem.currentTime > 3) {
+              pendingSeekRef.current = {
+                infoHash: targetTask.infoHash,
+                fileIndex: targetIndex,
+                time: histItem.currentTime,
+              }
+              setRestoredNotice(
+                `已自动恢复上次观看进度 ${formatPlaybackTime(histItem.currentTime)}（直接复用已缓冲缓存，不会重复下载）`,
+              )
+            } else {
+              setRestoredNotice('已自动恢复上次选中的视频（直接复用已缓冲缓存，不会重复下载）')
+            }
+          }
+        }
       }
     } catch (err) {
       setStatus(null)
@@ -194,29 +266,7 @@ export default function MagnetPlayerTool() {
     return activeTask.files.filter((f) => f.kind === 'subtitle' && f.browserNativePlayable)
   }, [activeTask])
 
-  // 当某个任务元数据刚加载完毕且尚未选中播放文件时，自动选中体积最大的视频文件
-  useEffect(() => {
-    if (!activeTask || !activeTask.ready) return
-    if (selectedHash === activeTask.infoHash && selectedFileIndex !== null) return
-    const videos = activeTask.files
-      .filter((f) => f.kind === 'video')
-      .sort((a, b) => b.length - a.length)
-    if (videos.length > 0) {
-      const best = videos[0]
-      setSelectedHash(activeTask.infoHash)
-      setSelectedFileIndex(best.index)
-      setVideoError(null)
-      // 若浏览器不原生支持封装且本机有 ffmpeg，默认推荐 remux 轻转封装
-      if (!best.browserNativePlayable && status?.ffmpegAvailable) {
-        setPlayMode('remux')
-      } else {
-        setPlayMode('native')
-      }
-      // 自动挂载同任务首个 .vtt/.srt 字幕
-      const firstSub = activeTask.files.find((f) => f.kind === 'subtitle' && f.browserNativePlayable)
-      setSelectedSubtitleIndex(firstSub ? firstSub.index : 'none')
-    }
-  }, [activeTask, selectedHash, selectedFileIndex, status?.ffmpegAvailable])
+  // 默认解析完毕后不自动选中或自动播放，严格等待用户在右侧主动点选文件再按需拉流
 
   const handleUnlock = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -265,12 +315,23 @@ export default function MagnetPlayerTool() {
       })
       setSelectedHash(res.task.infoHash)
       setSelectedFileIndex(null)
+      setShouldAutoPlay(false)
+      setRestoredNotice(null)
+      setRightTab('tasks')
+      saveSessionSnapshot(null)
+      setHistory((prev) =>
+        upsertHistoryItem(prev, {
+          infoHash: res.task.infoHash,
+          name: res.task.name,
+          magnetURI: res.task.magnetURI || target,
+        }),
+      )
       setPollPaused(false)
       if (!customMagnet) setMagnetInput('')
       toast.success(
         res.task.ready
-          ? `种子解析成功：共 ${res.task.files.length} 个文件（已开启按需省盘模式）`
-          : '磁力任务已加入，正在通过 DHT/Tracker 拉取元数据…',
+          ? `种子解析成功：共 ${res.task.files.length} 个文件，请在右侧点击选择要播放的视频`
+          : '磁力任务已加入，正在通过 DHT/Tracker 拉取元数据（随时可取消）…',
       )
     } catch (err) {
       toast.error(err instanceof Error ? err.message : '解析磁力链接失败')
@@ -296,6 +357,17 @@ export default function MagnetPlayerTool() {
       })
       setSelectedHash(res.task.infoHash)
       setSelectedFileIndex(null)
+      setShouldAutoPlay(false)
+      setRestoredNotice(null)
+      setRightTab('tasks')
+      saveSessionSnapshot(null)
+      setHistory((prev) =>
+        upsertHistoryItem(prev, {
+          infoHash: res.task.infoHash,
+          name: res.task.name,
+          magnetURI: res.task.magnetURI || `magnet:?xt=urn:btih:${res.task.infoHash}`,
+        }),
+      )
       setPollPaused(false)
       toast.success(`已解析种子「${res.task.name}」`)
     } catch (err) {
@@ -305,15 +377,123 @@ export default function MagnetPlayerTool() {
     }
   }
 
-  const handleSelectFile = (task: MagnetTaskItem, file: MagnetFileItem) => {
+  const handleSelectFile = (
+    task: MagnetTaskItem,
+    file: MagnetFileItem,
+    opts?: { autoPlay?: boolean; resumeTime?: number; overrideMode?: PlayMode },
+  ) => {
+    const nextMode: PlayMode =
+      opts?.overrideMode ??
+      (!file.browserNativePlayable && status?.ffmpegAvailable ? 'remux' : 'native')
+    const safeMode = nextMode !== 'native' && !status?.ffmpegAvailable ? 'native' : nextMode
+
     setSelectedHash(task.infoHash)
     setSelectedFileIndex(file.index)
+    setPlayMode(safeMode)
+    setShouldAutoPlay(opts?.autoPlay ?? true)
     setVideoError(null)
-    if (!file.browserNativePlayable && status?.ffmpegAvailable) {
-      setPlayMode('remux')
+    saveSessionSnapshot({ infoHash: task.infoHash, fileIndex: file.index, playMode: safeMode })
+
+    // 查找历史断点进度
+    const existingHist = history.find(
+      (h) => h.infoHash === task.infoHash && h.fileIndex === file.index,
+    )
+    const seekTime = opts?.resumeTime ?? (existingHist && existingHist.currentTime > 5 ? existingHist.currentTime : 0)
+    if (seekTime > 3) {
+      pendingSeekRef.current = { infoHash: task.infoHash, fileIndex: file.index, time: seekTime }
+      setRestoredNotice(`已定位至上次观看进度 ${formatPlaybackTime(seekTime)}`)
     } else {
-      setPlayMode('native')
+      pendingSeekRef.current = null
+      setRestoredNotice(null)
     }
+
+    setHistory((prev) =>
+      upsertHistoryItem(prev, {
+        infoHash: task.infoHash,
+        name: task.name,
+        magnetURI: task.magnetURI || `magnet:?xt=urn:btih:${task.infoHash}`,
+        fileIndex: file.index,
+        fileName: file.name,
+        playMode: safeMode,
+        currentTime: existingHist?.fileIndex === file.index ? existingHist.currentTime : 0,
+        duration: existingHist?.fileIndex === file.index ? existingHist.duration : 0,
+      }),
+    )
+
+    // 选择新文件时自动挂载同任务首个可用字幕（若之前未挂载本地字幕）
+    if (selectedSubtitleIndex !== 'local') {
+      const firstSub = task.files.find((f) => f.kind === 'subtitle' && f.browserNativePlayable)
+      setSelectedSubtitleIndex(firstSub ? firstSub.index : 'none')
+    }
+  }
+
+  /** 停止当前正在进行的下载/播放流，保留任务与文件列表以便重新选片 */
+  const handleStopDownload = async (infoHash: string) => {
+    if (selectedHash === infoHash) {
+      try {
+        videoRef.current?.pause()
+      } catch {
+        // 忽略
+      }
+      setSelectedFileIndex(null)
+      setShouldAutoPlay(false)
+      setVideoError(null)
+      setRestoredNotice(null)
+      saveSessionSnapshot(null)
+    }
+    try {
+      const res = await stopMagnetTaskDownload(token, infoHash)
+      setDisk(res.disk)
+      setTasks((prev) => prev.map((t) => (t.infoHash === infoHash ? res.task : t)))
+      toast.success('已停止播放并取消当前下载（文件列表与已缓冲分片已保留）')
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : '停止下载失败'
+      if (msg.includes('接口不存在') || msg.includes('404')) {
+        toast.error('后端进程尚未重启，请先重启 server/index.mjs 以加载最新停止下载接口')
+      } else {
+        toast.error(msg)
+      }
+    }
+  }
+
+  /** 从播放历史一键恢复或重新加载磁力 */
+  const handleResumeHistory = async (item: MagnetHistoryItem) => {
+    const existingTask = tasks.find((t) => t.infoHash === item.infoHash)
+    if (existingTask) {
+      setRightTab('tasks')
+      if (existingTask.ready && item.fileIndex !== null) {
+        const matched = existingTask.files.find((f) => f.index === item.fileIndex)
+        if (matched) {
+          handleSelectFile(existingTask, matched, {
+            autoPlay: true,
+            resumeTime: item.currentTime,
+            overrideMode: item.playMode,
+          })
+          return
+        }
+      }
+      setSelectedHash(existingTask.infoHash)
+      toast.info('已切回该任务，请在文件列表中选择要播放的集数')
+      return
+    }
+
+    // 后端缓存已过期或已清除，自动按记录的 magnetURI 重新提交解析
+    setRightTab('tasks')
+    await handleAddMagnet(item.magnetURI)
+  }
+
+  const handleDeleteHistoryItem = (infoHash: string) => {
+    setHistory((prev) => {
+      const next = prev.filter((h) => h.infoHash !== infoHash)
+      saveHistory(next)
+      return next
+    })
+  }
+
+  const handleClearHistory = () => {
+    setHistory([])
+    saveHistory([])
+    toast.success('已清空本地观看历史记录')
   }
 
   const handleDeleteTask = async (infoHash: string) => {
@@ -324,7 +504,10 @@ export default function MagnetPlayerTool() {
       if (selectedHash === infoHash) {
         setSelectedHash(null)
         setSelectedFileIndex(null)
+        setShouldAutoPlay(false)
         setVideoError(null)
+        setRestoredNotice(null)
+        saveSessionSnapshot(null)
       }
       toast.success('已停止任务并彻底删除临时缓存')
     } catch (err) {
@@ -340,7 +523,10 @@ export default function MagnetPlayerTool() {
       setDisk(res.disk)
       setSelectedHash(null)
       setSelectedFileIndex(null)
+      setShouldAutoPlay(false)
       setVideoError(null)
+      setRestoredNotice(null)
+      saveSessionSnapshot(null)
       toast.success(`已清理 ${res.clearedTasks} 个任务并释放全部磁盘缓存`)
     } catch (err) {
       toast.error(err instanceof Error ? err.message : '清理缓存失败')
@@ -625,7 +811,7 @@ export default function MagnetPlayerTool() {
                   ) : (
                     <Play className="mr-1.5 h-4 w-4" />
                   )}
-                  解析播放
+                  解析磁力
                 </Button>
                 <Button
                   variant="secondary"
@@ -652,7 +838,7 @@ export default function MagnetPlayerTool() {
 
             <div className="mt-2.5 flex flex-wrap items-center justify-between gap-2 text-[11px] text-muted-foreground">
               <span>
-                省盘机制：添加种子后<strong>不会自动全量下载</strong>，仅在播放选中视频时按需拉取进度附近分片；看完随手删除或空闲自动清空。
+                省盘可控：解析种子后<strong>默认不自动下载也不自动播放</strong>，请从右侧选定文件后再播；播放中随时可点「停止下载」中断拉流。
               </span>
               <button
                 type="button"
@@ -665,21 +851,59 @@ export default function MagnetPlayerTool() {
             </div>
           </section>
 
-          {/* 主舞台：左侧影院播放器 + 右侧任务与选集清单 */}
-          <div className="grid grid-cols-1 items-start gap-5 xl:grid-cols-[1.55fr_1fr]">
+          {/* 主舞台：左侧影院播放器 + 右侧任务与选集清单（minmax(0, ...) 严格防长文件名撑破布局） */}
+          <div className="grid w-full min-w-0 grid-cols-1 items-start gap-5 xl:grid-cols-[minmax(0,1.65fr)_minmax(0,1fr)]">
             {/* 左侧：影院播放器区 */}
-            <section className="flex flex-col gap-3.5 rounded-2xl border border-border/75 bg-card/85 p-4 shadow-sm">
+            <section className="flex min-w-0 max-w-full flex-col gap-3.5 overflow-hidden rounded-2xl border border-border/75 bg-card/85 p-4 shadow-sm">
               {/* 16:9 视频容器 */}
               <div className="relative aspect-video w-full overflow-hidden rounded-xl bg-black/95">
-                {videoSrc && activeFile ? (
+                {videoSrc && activeFile && activeTask ? (
                   <video
                     key={`${videoSrc}-${activeSubtitleUrl || 'nosub'}`}
                     ref={videoRef}
                     src={videoSrc}
                     controls
-                    autoPlay
+                    autoPlay={shouldAutoPlay}
                     playsInline
                     crossOrigin="anonymous"
+                    onLoadedMetadata={(e) => {
+                      const el = e.currentTarget
+                      const pending = pendingSeekRef.current
+                      if (
+                        pending &&
+                        pending.infoHash === activeTask.infoHash &&
+                        pending.fileIndex === activeFile.index &&
+                        playMode === 'native' &&
+                        Number.isFinite(el.duration) &&
+                        el.duration > pending.time + 2
+                      ) {
+                        try {
+                          el.currentTime = pending.time
+                        } catch {
+                          // 忽略浏览器尚未缓冲到该位置的异常
+                        }
+                        pendingSeekRef.current = null
+                      }
+                    }}
+                    onTimeUpdate={(e) => {
+                      const now = Date.now()
+                      if (now - lastProgressSaveRef.current < 3000) return
+                      const el = e.currentTarget
+                      if (!Number.isFinite(el.currentTime) || el.currentTime < 1) return
+                      lastProgressSaveRef.current = now
+                      setHistory((prev) =>
+                        upsertHistoryItem(prev, {
+                          infoHash: activeTask.infoHash,
+                          name: activeTask.name,
+                          magnetURI: activeTask.magnetURI || `magnet:?xt=urn:btih:${activeTask.infoHash}`,
+                          fileIndex: activeFile.index,
+                          fileName: activeFile.name,
+                          playMode,
+                          currentTime: el.currentTime,
+                          duration: Number.isFinite(el.duration) ? el.duration : 0,
+                        }),
+                      )
+                    }}
                     onError={() => {
                       setVideoError(
                         playMode === 'native'
@@ -695,7 +919,7 @@ export default function MagnetPlayerTool() {
                     )}
                   </video>
                 ) : (
-                  <div className="flex h-full flex-col items-center justify-center gap-2.5 p-6 text-center text-slate-400">
+                  <div className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center text-slate-400">
                     <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white/6">
                       {activeTask && !activeTask.ready ? (
                         <Loader2 className="h-7 w-7 animate-spin text-primary" />
@@ -703,19 +927,46 @@ export default function MagnetPlayerTool() {
                         <FileVideo className="h-7 w-7 opacity-70" />
                       )}
                     </div>
-                    <div className="text-sm font-semibold text-slate-200">
+                    <div className="max-w-full px-2 text-sm font-semibold text-slate-200">
                       {activeTask && !activeTask.ready
                         ? `正在从 DHT / Tracker 拉取元数据（已连 ${activeTask.numPeers} 个节点）…`
-                        : '粘贴磁力链接或从右侧选集点击视频开始播放'}
+                        : activeTask && activeTask.ready
+                          ? `种子已就绪（共 ${activeTask.files.filter((f) => f.kind === 'video' || f.kind === 'audio').length} 个音视频），请在右侧点击选择播放`
+                          : '粘贴磁力链接或上传 .torrent 种子后，从右侧选片播放'}
                     </div>
                     <div className="max-w-md text-xs text-slate-400">
                       {activeTask && !activeTask.ready
-                        ? '冷门磁力初次寻源可能需要 10–30 秒，若手里有 .torrent 文件直接拖入可 0 秒开播'
-                        : '支持 MP4 / WebM 原生 206 拖动秒播；MKV / H.265 / AC3 可走本机 FFmpeg 兼容流或一键丢给 PotPlayer / VLC'}
+                        ? '冷门磁力初次寻源可能需要 10–30 秒；若不想等待可随时取消本次加载'
+                        : '当前未发起任何文件下载（0 占带宽与磁盘），点击右侧目标视频才按需拉流'}
                     </div>
+                    {activeTask && !activeTask.ready && (
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => handleDeleteTask(activeTask.infoHash)}
+                        className="mt-1 h-8 text-xs"
+                      >
+                        <XCircle className="mr-1.5 h-3.5 w-3.5" />
+                        取消本次加载
+                      </Button>
+                    )}
                   </div>
                 )}
               </div>
+
+              {/* 断点续播 / 刷新恢复提示条 */}
+              {restoredNotice && activeFile && (
+                <div className="flex items-center justify-between gap-2 rounded-xl border border-sky-500/30 bg-sky-500/8 px-3 py-2 text-xs text-sky-700 dark:text-sky-300">
+                  <span className="truncate">{restoredNotice}</span>
+                  <button
+                    type="button"
+                    onClick={() => setRestoredNotice(null)}
+                    className="shrink-0 text-[11px] opacity-75 hover:opacity-100"
+                  >
+                    知道了
+                  </button>
+                </div>
+              )}
 
               {/* 解码失败时的智能引导条 */}
               {videoError && activeFile && (
@@ -757,13 +1008,16 @@ export default function MagnetPlayerTool() {
 
               {/* 播放模式、字幕与外置播放器控制条 */}
               {activeTask && activeFile && (
-                <div className="flex flex-col gap-3 rounded-xl border border-border/65 bg-muted/25 p-3.5">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <div className="min-w-0">
-                      <div className="truncate text-sm font-bold text-foreground" title={activeFile.path}>
+                <div className="flex min-w-0 flex-col gap-3 rounded-xl border border-border/65 bg-muted/25 p-3.5">
+                  <div className="flex min-w-0 flex-wrap items-start justify-between gap-2.5">
+                    <div className="min-w-0 flex-1">
+                      <div
+                        className="break-all text-sm leading-snug font-bold text-foreground line-clamp-2"
+                        title={activeFile.path}
+                      >
                         {activeFile.name}
                       </div>
-                      <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 font-mono text-[11px] text-muted-foreground">
+                      <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 font-mono text-[11px] text-muted-foreground">
                         <span>体积 {formatBytes(activeFile.length)}</span>
                         <span>
                           已缓冲 {formatBytes(activeFile.downloaded)}（{(activeFile.progress * 100).toFixed(1)}%）
@@ -778,24 +1032,42 @@ export default function MagnetPlayerTool() {
                       </div>
                     </div>
 
-                    <Segmented
-                      size="sm"
-                      value={playMode}
-                      onChange={(v) => {
-                        const m = v as PlayMode
-                        if (m !== 'native' && !status.ffmpegAvailable) {
-                          toast.error('本机未检测到 ffmpeg，请安装后重启服务，或使用外置播放器直链')
-                          return
-                        }
-                        setVideoError(null)
-                        setPlayMode(m)
-                      }}
-                      options={[
-                        { value: 'native', label: '原生直出' },
-                        { value: 'remux', label: '轻转封装' },
-                        { value: 'compat', label: 'H.264 兼容' },
-                      ]}
-                    />
+                    <div className="flex shrink-0 flex-wrap items-center gap-2">
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => handleStopDownload(activeTask.infoHash)}
+                        className="h-8 border border-amber-500/35 bg-amber-500/10 text-xs text-amber-700 hover:bg-amber-500/20 dark:text-amber-300"
+                      >
+                        <Square className="mr-1.5 h-3 w-3 fill-current" />
+                        停止并取消下载
+                      </Button>
+
+                      <Segmented
+                        size="sm"
+                        value={playMode}
+                        onChange={(v) => {
+                          const m = v as PlayMode
+                          if (m !== 'native' && !status.ffmpegAvailable) {
+                            toast.error('本机未检测到 ffmpeg，请安装后重启服务，或使用外置播放器直链')
+                            return
+                          }
+                          setVideoError(null)
+                          setShouldAutoPlay(true)
+                          setPlayMode(m)
+                          saveSessionSnapshot({
+                            infoHash: activeTask.infoHash,
+                            fileIndex: activeFile.index,
+                            playMode: m,
+                          })
+                        }}
+                        options={[
+                          { value: 'native', label: '原生直出' },
+                          { value: 'remux', label: '轻转封装' },
+                          { value: 'compat', label: 'H.264 兼容' },
+                        ]}
+                      />
+                    </div>
                   </div>
 
                   {/* 字幕选择 + 外置播放器直链 */}
@@ -888,84 +1160,256 @@ export default function MagnetPlayerTool() {
               )}
             </section>
 
-            {/* 右侧：活跃任务与剧集文件清单 */}
-            <aside className="flex flex-col gap-3 rounded-2xl border border-border/75 bg-card/85 p-4 shadow-sm">
-              <div className="flex items-center justify-between gap-2 border-b border-border/60 pb-2.5">
-                <div className="flex items-center gap-2 text-sm font-bold text-foreground">
-                  <FolderArchive className="h-4 w-4 text-primary" />
-                  <span>活跃任务与文件（{tasks.length}/{status.maxTasks}）</span>
+            {/* 右侧：活跃任务与剧集文件清单 + 播放历史记录 */}
+            <aside className="flex min-w-0 max-w-full flex-col gap-3 overflow-hidden rounded-2xl border border-border/75 bg-card/85 p-4 shadow-sm">
+              <div className="flex min-w-0 flex-wrap items-center justify-between gap-2 border-b border-border/60 pb-2.5">
+                <div className="flex items-center gap-1 rounded-xl bg-muted/50 p-0.5 text-xs">
+                  <button
+                    type="button"
+                    onClick={() => setRightTab('tasks')}
+                    className={cn(
+                      'inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 font-medium transition-colors',
+                      rightTab === 'tasks'
+                        ? 'bg-background text-foreground shadow-xs'
+                        : 'text-muted-foreground hover:text-foreground',
+                    )}
+                  >
+                    <FolderArchive className="h-3.5 w-3.5 text-primary" />
+                    活跃任务（{tasks.length}/{status.maxTasks}）
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setRightTab('history')}
+                    className={cn(
+                      'inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 font-medium transition-colors',
+                      rightTab === 'history'
+                        ? 'bg-background text-foreground shadow-xs'
+                        : 'text-muted-foreground hover:text-foreground',
+                    )}
+                  >
+                    <History className="h-3.5 w-3.5 text-primary" />
+                    观看记录（{history.length}）
+                  </button>
                 </div>
-                <label className="flex cursor-pointer items-center gap-1.5 text-[11px] text-muted-foreground">
-                  <input
-                    type="checkbox"
-                    checked={onlyShowVideos}
-                    onChange={(e) => setOnlyShowVideos(e.target.checked)}
-                    className="accent-primary"
-                  />
-                  仅看音视频
-                </label>
+
+                {rightTab === 'tasks' ? (
+                  <label className="flex shrink-0 cursor-pointer items-center gap-1.5 text-[11px] text-muted-foreground">
+                    <input
+                      type="checkbox"
+                      checked={onlyShowVideos}
+                      onChange={(e) => setOnlyShowVideos(e.target.checked)}
+                      className="accent-primary"
+                    />
+                    仅看音视频
+                  </label>
+                ) : (
+                  history.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={handleClearHistory}
+                      className="shrink-0 text-[11px] text-muted-foreground hover:text-rose-600"
+                    >
+                      清空记录
+                    </button>
+                  )
+                )}
               </div>
 
-              {tasks.length === 0 ? (
+              {rightTab === 'history' ? (
+                history.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center gap-2 py-12 text-center text-xs text-muted-foreground">
+                    <History className="h-8 w-8 opacity-30" />
+                    <div>暂无观看与磁力解析记录</div>
+                    <div className="opacity-80">播放视频时会自动保存进度，刷新页面可无缝续播</div>
+                  </div>
+                ) : (
+                  <div className="max-h-[560px] min-w-0 space-y-2.5 overflow-x-hidden overflow-y-auto pr-1">
+                    {history.map((item) => {
+                      const inCache = tasks.some((t) => t.infoHash === item.infoHash)
+                      const pct =
+                        item.duration > 0
+                          ? Math.min(100, Math.round((item.currentTime / item.duration) * 100))
+                          : 0
+                      return (
+                        <div
+                          key={item.infoHash}
+                          className="flex min-w-0 flex-col gap-2 rounded-xl border border-border/70 bg-background/65 p-3"
+                        >
+                          <div className="flex min-w-0 items-start justify-between gap-2">
+                            <div className="min-w-0 flex-1">
+                              <div className="truncate text-xs font-bold text-foreground" title={item.name}>
+                                {item.name}
+                              </div>
+                              {item.fileName && (
+                                <div
+                                  className="mt-0.5 truncate text-[11px] text-muted-foreground"
+                                  title={item.fileName}
+                                >
+                                  上次看到：{item.fileName}
+                                </div>
+                              )}
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteHistoryItem(item.infoHash)}
+                              title="移除此记录"
+                              className="shrink-0 text-muted-foreground hover:text-rose-500"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+
+                          {item.currentTime > 0 && (
+                            <div className="space-y-1">
+                              <div className="flex items-center justify-between font-mono text-[10px] text-muted-foreground">
+                                <span>
+                                  进度 {formatPlaybackTime(item.currentTime)}
+                                  {item.duration > 0 ? ` / ${formatPlaybackTime(item.duration)}` : ''}
+                                </span>
+                                {pct > 0 && <span>{pct}%</span>}
+                              </div>
+                              {pct > 0 && (
+                                <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+                                  <div className="h-full rounded-full bg-primary" style={{ width: `${pct}%` }} />
+                                </div>
+                              )}
+                            </div>
+                          )}
+
+                          <div className="flex items-center justify-between gap-2 pt-0.5">
+                            <span
+                              className={cn(
+                                'rounded-md px-1.5 py-0.5 text-[10px] font-medium',
+                                inCache
+                                  ? 'bg-emerald-500/12 text-emerald-700 dark:text-emerald-400'
+                                  : 'bg-muted text-muted-foreground',
+                              )}
+                            >
+                              {inCache ? '仍在缓存 · 秒续播' : '已清盘 · 可一键重载'}
+                            </span>
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              disabled={submitting}
+                              onClick={() => handleResumeHistory(item)}
+                              className="h-7 px-2.5 text-[11px]"
+                            >
+                              <Play className="mr-1 h-3 w-3" />
+                              {inCache ? '继续播放' : '重新加载'}
+                            </Button>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )
+              ) : tasks.length === 0 ? (
                 <div className="flex flex-col items-center justify-center gap-2 py-12 text-center text-xs text-muted-foreground">
                   <Magnet className="h-8 w-8 opacity-30" />
                   <div>当前暂无活跃磁力任务</div>
                   <div className="opacity-80">缓存目录干净，0 字节额外磁盘占用</div>
                 </div>
               ) : (
-                <div className="flex max-h-[600px] flex-col gap-3 overflow-y-auto pr-0.5">
+                <div className="max-h-[600px] min-w-0 space-y-3 overflow-x-hidden overflow-y-auto pr-0.5">
                   {tasks.map((task) => {
                     const visibleFiles = onlyShowVideos
                       ? task.files.filter((f) => f.kind === 'video' || f.kind === 'audio')
                       : task.files
                     const isCurrentTask = activeTask?.infoHash === task.infoHash
+                    // 仅当存在选中播放文件、活跃拉流/转码或未暂停且在下载时，才判定为下载中（兼容旧后端未重启状态）
+                    const isDownloading =
+                      task.ready &&
+                      (task.activeFileIndex !== null ||
+                        (task.activeStreams ?? 0) > 0 ||
+                        task.activeTranscodes > 0 ||
+                        (task.downloadSpeed > 0 && task.paused !== true))
                     return (
                       <div
                         key={task.infoHash}
                         className={cn(
-                          'flex flex-col gap-2 rounded-xl border p-3 transition-colors',
+                          'flex min-w-0 max-w-full flex-col gap-2 overflow-hidden rounded-xl border p-3 transition-colors',
                           isCurrentTask
                             ? 'border-primary/45 bg-primary/4'
                             : 'border-border/70 bg-background/60',
                         )}
                       >
-                        <div className="flex items-start justify-between gap-2">
+                        <div className="flex min-w-0 items-start justify-between gap-2">
                           <div className="min-w-0 flex-1">
-                            <div className="truncate text-xs font-bold text-foreground" title={task.name}>
+                            <div
+                              className="truncate text-xs font-bold text-foreground"
+                              title={task.name}
+                            >
                               {task.name}
                             </div>
                             <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 font-mono text-[10px] text-muted-foreground">
-                              <span className="text-emerald-600 dark:text-emerald-400">
-                                ↓ {formatSpeed(task.downloadSpeed)}
-                              </span>
+                              {task.ready && !isDownloading ? (
+                                <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
+                                  待选片 · 未下载
+                                </span>
+                              ) : (
+                                <span className="text-emerald-600 dark:text-emerald-400">
+                                  ↓ {formatSpeed(task.downloadSpeed)}
+                                </span>
+                              )}
                               <span>节点 {task.numPeers}</span>
                               <span>已下 {formatBytes(task.downloaded)}</span>
                               <span>空闲清理 {formatIdleTime(task.idleRemainingSec)}</span>
                             </div>
                           </div>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleDeleteTask(task.infoHash)}
-                            title="停止任务并立即删除临时文件释放磁盘"
-                            className="h-7 shrink-0 px-2 text-[11px] text-rose-600 hover:bg-rose-500/10 hover:text-rose-600 dark:text-rose-400"
-                          >
-                            <Trash2 className="mr-1 h-3 w-3" />
-                            删缓存
-                          </Button>
+
+                          <div className="flex shrink-0 items-center gap-1">
+                            {!task.ready ? (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleDeleteTask(task.infoHash)}
+                                title="取消正在寻源的磁力加载任务"
+                                className="h-7 px-2 text-[11px] text-amber-600 hover:bg-amber-500/10 hover:text-amber-600 dark:text-amber-400"
+                              >
+                                <XCircle className="mr-1 h-3 w-3" />
+                                取消加载
+                              </Button>
+                            ) : (
+                              <>
+                                {isDownloading && (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => handleStopDownload(task.infoHash)}
+                                    title="立即停止当前下载与播放，保留文件列表"
+                                    className="h-7 px-2 text-[11px] text-amber-600 hover:bg-amber-500/10 hover:text-amber-600 dark:text-amber-400"
+                                  >
+                                    <Square className="mr-1 h-2.5 w-2.5 fill-current" />
+                                    停止
+                                  </Button>
+                                )}
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleDeleteTask(task.infoHash)}
+                                  title="彻底移除任务并立即删除临时文件释放磁盘"
+                                  className="h-7 px-2 text-[11px] text-rose-600 hover:bg-rose-500/10 hover:text-rose-600 dark:text-rose-400"
+                                >
+                                  <Trash2 className="mr-1 h-3 w-3" />
+                                  删缓存
+                                </Button>
+                              </>
+                            )}
+                          </div>
                         </div>
 
                         {!task.ready ? (
-                          <div className="flex items-center gap-2 rounded-lg bg-muted/40 px-2.5 py-2 text-[11px] text-muted-foreground">
-                            <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
-                            <span>正在寻源拉取种子文件清单…</span>
+                          <div className="flex min-w-0 items-center gap-2 rounded-lg bg-muted/40 px-2.5 py-2 text-[11px] text-muted-foreground">
+                            <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-primary" />
+                            <span className="truncate">正在寻源拉取种子文件清单…</span>
                           </div>
                         ) : visibleFiles.length === 0 ? (
                           <div className="rounded-lg bg-muted/35 px-2.5 py-2 text-[11px] text-muted-foreground">
                             当前筛选下无音视频文件（可取消勾选“仅看音视频”查看全部 {task.files.length} 个文件）
                           </div>
                         ) : (
-                          <div className="flex max-h-60 flex-col gap-1 overflow-y-auto">
+                          /* 采用 block space-y 布局 + shrink-0 彻底避免 Flexbox 在溢出滚动时压缩按钮高度 */
+                          <div className="max-h-80 min-w-0 space-y-1.5 overflow-x-hidden overflow-y-auto pr-1">
                             {visibleFiles.map((f) => {
                               const isPlaying =
                                 activeTask?.infoHash === task.infoHash && activeFile?.index === f.index
@@ -977,7 +1421,7 @@ export default function MagnetPlayerTool() {
                                   disabled={!canPlay}
                                   onClick={() => canPlay && handleSelectFile(task, f)}
                                   className={cn(
-                                    'flex items-center justify-between gap-2 rounded-lg border px-2.5 py-2 text-left text-xs transition-all',
+                                    'flex min-h-[38px] w-full min-w-0 max-w-full shrink-0 items-center justify-between gap-2 overflow-hidden rounded-lg border px-2.5 py-2 text-left text-xs transition-all',
                                     isPlaying
                                       ? 'border-primary bg-primary/14 font-semibold text-primary'
                                       : canPlay
@@ -985,7 +1429,7 @@ export default function MagnetPlayerTool() {
                                         : 'cursor-default border-transparent bg-muted/25 text-muted-foreground opacity-75',
                                   )}
                                 >
-                                  <div className="flex min-w-0 flex-1 items-center gap-2">
+                                  <div className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden">
                                     {f.kind === 'video' ? (
                                       <FileVideo className="h-3.5 w-3.5 shrink-0" />
                                     ) : f.kind === 'audio' ? (
@@ -993,11 +1437,19 @@ export default function MagnetPlayerTool() {
                                     ) : (
                                       <FileText className="h-3.5 w-3.5 shrink-0" />
                                     )}
-                                    <span className="truncate" title={f.path}>
+                                    <span className="block min-w-0 flex-1 truncate leading-snug" title={f.path}>
                                       {f.name}
                                     </span>
                                   </div>
                                   <div className="flex shrink-0 items-center gap-1.5 font-mono text-[10px] opacity-85">
+                                    {f.downloaded > 0 && (
+                                      <span
+                                        className="rounded bg-emerald-500/15 px-1 text-[9px] text-emerald-700 dark:text-emerald-400"
+                                        title={`本地已缓存 ${formatBytes(f.downloaded)}`}
+                                      >
+                                        {Math.min(100, Math.round(f.progress * 100))}%
+                                      </span>
+                                    )}
                                     {f.kind === 'video' && !f.browserNativePlayable && (
                                       <span className="rounded bg-amber-500/15 px-1 text-[9px] text-amber-700 dark:text-amber-300">
                                         {f.ext.replace('.', '').toUpperCase()}
