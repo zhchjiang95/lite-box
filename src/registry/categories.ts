@@ -25,7 +25,7 @@ export const categories: Category[] = [
   { id: 'generate', name: '生成器', description: '二维码、条码、印章、密码', icon: Sparkles, gradient: ['#f59e0b', '#ef4444'] },
   { id: 'media', name: '音视频', description: '格式转换、剪辑、提取', icon: Clapperboard, gradient: ['#d946ef', '#8b5cf6'] },
   { id: 'calendar', name: '日历历法', description: '万年历、节气、节假日、星座', icon: CalendarDays, gradient: ['#f43f5e', '#f59e0b'] },
-  { id: 'life', name: '生活实用', description: '计算器、换算、随机决策', icon: Coffee, gradient: ['#84cc16', '#10b981'] },
+  { id: 'life', name: '生活实用', description: '计算器、解压、换算、随机决策', icon: Coffee, gradient: ['#84cc16', '#10b981'] },
 ]
 
 export const categoryMap = Object.fromEntries(categories.map((c) => [c.id, c])) as Record<

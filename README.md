@@ -305,11 +305,16 @@ src/
    │  ├─ meta.ts              # 工具元数据
    │  ├─ engine.ts            # 双引擎 TTS 接口封装、多角色剧本解析器（[角色名] 语法）与同步字幕工具
    │  └─ index.tsx            # Edge 神经语音 MP3+SRT 配音、主播试听、多角色编排与浏览器离线跟读工作台
-   └─ seal-generator/         # 印章生成器
+   ├─ seal-generator/         # 印章生成器
+   │  ├─ meta.ts              # 工具元数据
+   │  ├─ types.ts             # 4 大印章类型、8 套场景模板、印泥配色与 300 DPI 实体尺寸配置
+   │  ├─ engine.ts            # Canvas/SVG 双渲染引擎、椭圆真弧长排字、白文真镂空、物理印泥做旧与图片盖章合成
+   │  └─ index.tsx            # 实时多底衬预览（透明/宣纸/模拟合同）、本地字体导入与交互式图片盖章工作台
+   └─ zip-extract/            # ZIP 在线解压与预览
       ├─ meta.ts              # 工具元数据
-      ├─ types.ts             # 4 大印章类型、8 套场景模板、印泥配色与 300 DPI 实体尺寸配置
-      ├─ engine.ts            # Canvas/SVG 双渲染引擎、椭圆真弧长排字、白文真镂空、物理印泥做旧与图片盖章合成
-      └─ index.tsx            # 实时多底衬预览（透明/宣纸/模拟合同）、本地字体导入与交互式图片盖章工作台
+      ├─ engine.ts            # 基于 @zip.js/zip.js 的流式解析、AES/ZipCrypto 解密、UTF-8/GBK 防乱码、Zip Slip 消毒与本地目录直写引擎
+      ├─ PreviewDrawer.tsx    # 免解压在线预览器（图片/HEIC、语法高亮代码/JSON 美化、PDF、音视频、嵌套 ZIP 钻取与 Hex 头检视）
+      └─ index.tsx            # 嵌套压缩包导航、目录树资源管理器、密码解锁与批量提取工作台
 ```
 
 ---

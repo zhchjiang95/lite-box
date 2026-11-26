@@ -167,6 +167,8 @@
 - [x] **控制台计算器（`console-calc`）**：仿浏览器 DevTools Console 交互的实时预览计算器，零 `eval` 自研十进制高精度引擎（彻底消除 `0.1 + 0.2` 浮点误差），支持边输边出预览（含未输入完算式容错）、历史记录与 `↑`/`↓` 翻页、`#n`/`ans` 引用、中文变量与单位（`万`/`k`/`亿`）、直观百分比与取模、多进制与位运算、30+ 科学统计函数、千分位/人民币大写/多进制实时洞察、以及 Soulver 风格多行草稿纸联动算账与账单导出
 - [x] **设备信息与网速测试（`device-info`）**：纯本地全面体检设备与系统信息（UA-CH 高精度 OS/架构、CPU 逻辑核心、内存与 JS 堆占用、WebGL/WebGPU 显卡型号与纹理上限、屏幕分辨率/DPR/色域/HDR/实时刷新率测算、电池监听、本地存储配额、音视频编解码与媒体外设、18 项现代 Web API 能力与权限矩阵，支持复制 Markdown/导出 JSON 报告），内置公网 Cloudflare 边缘与自建 `/api/speedtest/*` 双引擎实时测速仪（Ping/抖动/流式下载/随机载荷上传、SVG 弧形仪表盘与实时波形图、按需公网 IP 查询与历史对比）
 - [x] **竞彩赛果大宽表（`sporttery-results`）**：迁移自 `sporttery` 项目的体彩足球 15 列完赛开奖宽表，配合模块化零依赖后端 `/api/sporttery/results`（受控 6 并发池限流 + 单场 SP 24h 缓存 + 列表 5m 缓存 + 90 天跨度自动保护），前端支持快捷/自定义日期、联赛筛选与不足 10 条自动分页补齐、队名搜索、胜平负/单关过滤、赔率列排序、冻结左侧对阵列、触底无限加载，以及一键导出 Excel 兼容 CSV 与制表符复制
+- [x] **ZIP 在线解压与预览（`zip-extract`）**：纯浏览器本地压缩包资源管理器，支持标准 ZIP / ZIP64 与 AES-256 / ZipCrypto 密码加密包解密、智能识别 UTF-8 / Windows GB18030(GBK) / Big5 / Shift-JIS / EUC-KR 防乱码、嵌套目录树浏览与全包搜索、自动隐藏 `__MACOSX`/`.DS_Store` 系统垃圾文件、免解压在线预览图片（含 HEIC）/ 代码语法高亮（含 JSON 美化与编码切换）/ PDF / 音视频 / 嵌套 ZIP 钻取与 Hex 文件头检视，以及 Chrome/Edge 原生 File System Access API 流式一键解压到本地文件夹与勾选项重打包下载
+  - *技术方案*：`@zip.js/zip.js`（Web Worker + 原生流式解压 + Web Crypto AES 解密）+ Zip Slip 安全路径消毒 + File System Access API + `highlight.js` 按需高亮
 - [ ] **番茄钟与白噪音（`pomodoro`）**：纯 Web Audio API 合成雨声/白噪音/粉红噪音 + 专注倒计时，支持桌面通知
 - [ ] **手持弹幕 / 全屏时钟（`fullscreen-clock`）**：适合平板/桌面横屏放置的翻页大字时钟或全屏滚动 LED 弹幕
 
