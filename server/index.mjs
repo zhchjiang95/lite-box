@@ -2,11 +2,13 @@
  * 轻匣（LiteBox）独立 Node.js 后端与静态部署服务（零第三方依赖）
  *
  * 目录架构：
+ * - lib/config.mjs      统一配置文件（server/config.json）与环境变量合并加载器
  * - lib/http.mjs        公共响应封装、安全头与并发控制
  * - lib/cache.mjs       通用 TTL + 容量上限内存缓存
  * - lib/static.mjs      Brotli/Gzip 静态托管、PWA 缓存头与 SPA 回退
  * - routes/speedtest.mjs  /api/speedtest/* 局域网与自建节点网速测试
  * - routes/sporttery.mjs  /api/sporttery/results 体彩赛果大宽表数据代理与缓存
+ * - routes/magnet.mjs     /api/magnet/* 磁力/种子按需流媒体、ffmpeg 兼容转码与省磁盘缓存管理
  * - signaling.mjs       /ws/lan 局域网发现、WebRTC 信令与极端网络中转兜底
  */
 
@@ -14,20 +16,26 @@ import http from 'node:http'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { sharedCache } from './lib/cache.mjs'
+import { serverConfig } from './lib/config.mjs'
 import { sendJson, sendText } from './lib/http.mjs'
 import { createStaticHandler, resolveDistDir } from './lib/static.mjs'
 import { handleSpeedtestRoutes } from './routes/speedtest.mjs'
 import { handleSportteryRoutes } from './routes/sporttery.mjs'
+import {
+  closeMagnetService,
+  getMagnetSummary,
+  handleMagnetRoutes,
+} from './routes/magnet.mjs'
 import { attachLanSignaling } from './signaling.mjs'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
-const PORT = Number(process.env.PORT) || 3000
-const HOST = process.env.HOST || '0.0.0.0'
-const ENABLE_COMPRESSION = process.env.ENABLE_COMPRESSION !== 'false'
+const PORT = serverConfig.port
+const HOST = serverConfig.host
+const ENABLE_COMPRESSION = serverConfig.enableCompression
 
 const staticHandler = createStaticHandler({
-  distDir: resolveDistDir(__dirname),
+  distDir: serverConfig.distDir ? path.resolve(serverConfig.distDir) : resolveDistDir(__dirname),
   enableCompression: ENABLE_COMPRESSION,
 })
 
@@ -52,6 +60,7 @@ const server = http.createServer(async (req, res) => {
         compression: ENABLE_COMPRESSION ? 'br+gzip' : 'disabled',
         cache: sharedCache.getStats(),
         signaling: signalingHandle?.getStats() ?? { onlineDevices: 0, activeRooms: 0 },
+        magnet: getMagnetSummary(),
         uptimeSec: Math.floor(process.uptime()),
       })
       return
@@ -60,6 +69,7 @@ const server = http.createServer(async (req, res) => {
     // 2. 业务 API 路由分发
     if (handleSpeedtestRoutes(req, res, pathname, parsedUrl)) return
     if (await handleSportteryRoutes(req, res, pathname, parsedUrl)) return
+    if (await handleMagnetRoutes(req, res, pathname, parsedUrl)) return
 
     // 未知 /api/* 路径明确返回 404 JSON，避免落入 SPA 回退返回 index.html
     if (pathname.startsWith('/api/')) {
@@ -83,12 +93,15 @@ signalingHandle = attachLanSignaling(server)
 
 server.listen(PORT, HOST, () => {
   const displayHost = HOST === '0.0.0.0' ? 'localhost' : HOST
+  const magnetSum = getMagnetSummary()
   console.log(`
   🚀 轻匣（LiteBox）独立后端与静态服务已启动
+  ➜  配置文件:   ${serverConfig.configLoaded ? `已加载 ${serverConfig.configPath}` : `未检测到 config.json（可复制 config.example.json 进行配置）`}
   ➜  本地访问:   http://${displayHost}:${PORT}
   ➜  无线信令:   ws://${displayHost}:${PORT}/ws/lan
   ➜  网速测试:   http://${displayHost}:${PORT}/api/speedtest/ping
   ➜  赛果接口:   http://${displayHost}:${PORT}/api/sporttery/results
+  ➜  磁力流媒:   http://${displayHost}:${PORT}/api/magnet/status（${magnetSum.enabled ? (magnetSum.requiresAuth ? '口令已保护' : '未设口令') : '已禁用'} | 缓存: ${magnetSum.cacheDir}）
   ➜  健康检查:   http://${displayHost}:${PORT}/healthz
   ➜  静态目录:   ${staticHandler.distDir}${staticHandler.hasDist ? '' : '（未构建，仅 API 与信令可用）'}
   ➜  内容压缩:   ${ENABLE_COMPRESSION ? '已启用 Brotli (优先) + Gzip + 内存热缓存' : '已关闭（由前置代理接管）'}
@@ -96,10 +109,11 @@ server.listen(PORT, HOST, () => {
 })
 
 /** 优雅关闭服务 */
-const shutdown = (signal) => {
+const shutdown = async (signal) => {
   console.log(`\n收到 ${signal} 信号，正在优雅关闭服务...`)
   sharedCache.close()
   signalingHandle?.close()
+  await closeMagnetService().catch(() => {})
   server.close(() => {
     console.log('服务已安全退出。')
     process.exit(0)

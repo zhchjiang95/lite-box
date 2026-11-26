@@ -1,0 +1,16 @@
+{
+  "port": 3000,
+  "host": "0.0.0.0",
+  "distDir": "",
+  "enableCompression": true,
+  "magnet": {
+    "enabled": true,
+    "token": "请替换为你自己的高强度访问口令",
+    "cacheDir": "D:/LiteBoxMagnetCache",
+    "idleMinutes": 20,
+    "maxTasks": 2,
+    "uploadLimitBytes": 524288,
+    "downloadLimitBytes": -1,
+    "ffmpegPath": "ffmpeg"
+  }
+}

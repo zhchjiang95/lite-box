@@ -141,6 +141,8 @@
 
 ## 九、音视频（`media`）
 
+- [x] **磁力在线播放（`magnet-player`）**：配合独立后端 `server/routes/magnet.mjs` 实现 `magnet:?` 磁力链接与 `.torrent` 种子边下边播，内置省磁盘按需拉流（不自动全量下载、最大任务 LRU 淘汰、空闲 30 分钟自动删盘、一键清空缓存与盘符剩余空间实时监控）、原生 HTTP `206 Range` 拖动秒播、本机 `ffmpeg` 自动探测（支持 `remux` 轻转封装与 `H.264` 全兼容转码）、种子内/本地 `.srt/.vtt` 字幕加载、一键唤起 PotPlayer/VLC/IINA 外置播放器直链，以及外网部署强口令 `MAGNET_TOKEN` 鉴权与上行限速保护
+  - *技术方案*：后端按需可选依赖 `webtorrent` + 本机 `ffmpeg` 流式管道 + `fs.statfsSync` 磁盘监控 + 前端 HTML5 `<video>` 与外置播放器协议唤起
 - [ ] **视频转 GIF 动图（`video-to-gif`）**：本地载入视频，框选时间段、设置帧率与尺寸，在浏览器中生成高画质调色板 GIF
   - *技术方案*：`<video>` + Canvas 抽帧 + `gifenc`（轻量极速纯 JS GIF 编码器）
 - [ ] **视频逐帧截图提取（`video-frames`）**：精确到帧预览视频，一键导出当前帧高清图或按间隔批量抽帧打包

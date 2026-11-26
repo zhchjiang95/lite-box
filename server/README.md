@@ -27,29 +27,88 @@ cd server
 PORT=8080 node index.mjs
 ```
 
-## 环境变量说明
+## 配置文件与环境变量说明
 
-| 变量 | 默认值 | 说明 |
-|---|---|---|
-| `PORT` | `3000` | 服务监听端口 |
-| `HOST` | `0.0.0.0` | 服务绑定地址 |
-| `DIST_DIR` | 自动探测（`./public` → `../dist`） | 显式指定前端静态产物目录 |
-| `ENABLE_COMPRESSION` | `true` | 是否开启 Brotli + Gzip 压缩；若前置 Nginx / Cloudflare 已统一压缩可设为 `false` |
+推荐直接通过 **`server/config.json`** 进行配置（已加入 `.gitignore`，不会误提交你的口令到 Git）：
 
-## 目录架构（零第三方依赖模块化分层）
+```powershell
+cd server
+copy config.example.json config.json   # macOS / Linux 请使用 cp
+```
+
+配置加载优先级：**环境变量（`process.env`） > `server/config.json`（或 `CONFIG_PATH` 指定路径） > 内置默认值**。
+
+| `config.json` 字段 | 对应环境变量 | 默认值 | 说明 |
+|---|---|---|---|
+| `port` | `PORT` | `3000` | 服务监听端口 |
+| `host` | `HOST` | `0.0.0.0` | 服务绑定地址 |
+| `distDir` | `DIST_DIR` | 自动探测（`./public` → `../dist`） | 显式指定前端静态产物目录 |
+| `enableCompression` | `ENABLE_COMPRESSION` | `true` | 是否开启 Brotli + Gzip 压缩；若前置 Nginx / Cloudflare 已统一压缩可设为 `false` |
+| `magnet.enabled` | `ENABLE_MAGNET` | `true` | 是否启用 `/api/magnet/*` 磁力边下边播模块（未安装 `webtorrent` 时自动降级禁用，不影响其他零依赖能力） |
+| `magnet.token` | `MAGNET_TOKEN` | 空（无口令） | **外网端口转发强烈建议设置！** 启用后所有磁力流媒体与任务接口必须携带该口令 |
+| `magnet.cacheDir` | `MAGNET_CACHE_DIR` | 系统临时目录 `litebox-magnet` | 临时缓存目录，Windows 空间紧张时可指向大盘符如 `"D:/LiteBoxMagnetCache"` |
+| `magnet.idleMinutes` | `MAGNET_IDLE_MINUTES` | `30` | 单任务无播放/拉流后自动销毁并删除磁盘缓存的超时分钟数 |
+| `magnet.maxTasks` | `MAGNET_MAX_TASKS` | `2` | 同时保留的最大磁力任务数（超限时自动清理最久未用任务释放磁盘） |
+| `magnet.uploadLimitBytes` | `MAGNET_UPLOAD_LIMIT` | `524288`（512 KB/s） | BT 上传限速字节/秒，防止家用宽带上行被打满（`-1` 为不限速） |
+| `magnet.downloadLimitBytes` | `MAGNET_DOWNLOAD_LIMIT` | `-1`（不限速） | BT 下载限速字节/秒 |
+| `magnet.ffmpegPath` | `FFMPEG_PATH` | `ffmpeg` | 自定义本机 `ffmpeg` 可执行文件路径（用于 MKV / AC3 / H.265 兼容流式转码） |
+| — | `CONFIG_PATH` | `server/config.json` | 可选，显式指定外部 JSON 配置文件路径 |
+
+## 目录架构（核心零依赖 + 可选扩展模块化分层）
 
 ```text
 server/
 ├─ index.mjs              # 入口：HTTP 服务启动、路由分发、WS 挂载与优雅退出
+├─ config.example.json    # 服务端配置模板（复制为 config.json 生效，已在 .gitignore 中忽略）
 ├─ lib/
+│  ├─ config.mjs          # 统一配置加载器（环境变量 > server/config.json > 默认值）
 │  ├─ http.mjs            # 公共安全头、sendJson/sendText 与并发池控制器
 │  ├─ cache.mjs           # 通用 TTL + 容量上限内存缓存（带统计与防阻塞退出定时器）
 │  └─ static.mjs          # Brotli/Gzip 静态资源托管、64MB 压缩热缓存与 SPA/PWA 回退
 ├─ routes/
 │  ├─ speedtest.mjs       # /api/speedtest/* 局域网与自建节点网速测试接口
-│  └─ sporttery.mjs       # /api/sporttery/results（兼容 /api/matches/results）体彩赛果代理与缓存
+│  ├─ sporttery.mjs       # /api/sporttery/results（兼容 /api/matches/results）体彩赛果代理与缓存
+│  └─ magnet.mjs          # /api/magnet/* 磁力/种子按需流媒体、ffmpeg 兼容转码与省磁盘缓存管理
 └─ signaling.mjs          # /ws/lan 局域网设备发现、WebRTC 信令与极端网络中转兜底
 ```
+
+## 磁力在线播放（Windows 部署与安全指南）
+
+磁力流媒体依赖可选包 `webtorrent`（需要 Node.js ≥ 22，已内置 `pnpm.onlyBuiltDependencies` 自动拉取预编译二进制，无需装 C++ 编译器）。如不需要磁力功能，直接 `node index.mjs` 即可零依赖运行全部其余能力。
+
+```powershell
+# 1. 安装可选依赖（仅首次需要）
+cd server
+pnpm install
+
+# 2. 复制配置文件模板，用记事本/VSCode 修改 magnet.token（强口令）与 magnet.cacheDir（大空间盘符）
+copy config.example.json config.json
+
+# 3. 直接启动服务（自动读取 server/config.json）
+node index.mjs
+```
+
+`server/config.json` 示例（Windows 路径推荐使用正斜杠 `/` 或双反斜杠 `\\`）：
+
+```json
+{
+  "port": 3000,
+  "host": "0.0.0.0",
+  "magnet": {
+    "enabled": true,
+    "token": "替换为你自己的高强度口令",
+    "cacheDir": "D:/LiteBoxMagnetCache",
+    "idleMinutes": 20,
+    "maxTasks": 2,
+    "uploadLimitBytes": 524288
+  }
+}
+```
+
+> **外网端口转发安全与省磁盘提示**：
+> - **强口令与安全接入**：端口转发暴露公网时**务必设置 `MAGNET_TOKEN`**，否则被扫到端口会导致宽带与磁盘被他人盗用；如仅自己远程访问，更推荐配合 **Tailscale / ZeroTier** 异地组网或前置 HTTPS（如 Caddy / Nginx）加密传输口令。
+> - **省磁盘机制**：添加种子后默认取消全部文件下载，仅在播放选中视频时按需拉取进度附近分片；切集自动释放旧文件优先级，停止任务、空闲超时、服务启动与退出时均自动删除临时缓存文件。
+> - **格式兼容**：若本机 PATH 已安装 `ffmpeg`（Windows 可通过 `winget install Gyan.FFmpeg` 一键安装），遇到 MKV / H.265 / AC3 音频浏览器无声或黑屏时可在界面切换「轻转封装」或「H.264 兼容」；也可直接点击页面按钮唤起 **PotPlayer / VLC / IINA** 零转码硬解直连播放。
 
 ## 内置特性
 
