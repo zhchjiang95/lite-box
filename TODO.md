@@ -145,9 +145,9 @@
   - *技术方案*：后端按需可选依赖 `webtorrent` + 本机 `ffmpeg` 流式管道 + `fs.statfsSync` 磁盘监控 + 前端 HTML5 `<video>` 与外置播放器协议唤起
 - [ ] **视频转 GIF 动图（`video-to-gif`）**：本地载入视频，框选时间段、设置帧率与尺寸，在浏览器中生成高画质调色板 GIF
   - *技术方案*：`<video>` + Canvas 抽帧 + `gifenc`（轻量极速纯 JS GIF 编码器）
-- [ ] **视频逐帧截图提取（`video-frames`）**：精确到帧预览视频，一键导出当前帧高清图或按间隔批量抽帧打包
-- [ ] **音频剪切与格式转换（`audio-cutter`）**：可视化波形图选区裁剪、淡入淡出、导出 WAV / MP3
-  - *技术方案*：`Web Audio API` (`OfflineAudioContext`)
+- [x] **视频逐帧截图提取（`video-frames`）**：纯浏览器本地精确到帧预览视频，支持键盘微调单帧（`←`/`→`、`24/25/30/60 fps` 步进）、倍速播放与时间码精确定位、一键截取高清帧/直接写入剪贴板、PNG/JPEG/WebP 与分辨率规格定制、可选烧录时间码水印、独立离屏按均匀张数/时间间隔/帧率批量抽帧打包 ZIP、高清大图灯箱预览及一键生成电影分镜缩略图拼图板（Contact Sheet）
+- [x] **音频剪切与格式转换（`audio-cutter`）**：基于 Web Audio API 的纯本地可视化音频剪辑工作台，支持音频及 MP4 视频音轨提取、双层峰值/RMS 波形图 1×–16× 缩放拖拽选区、保留选区与剪除中间段（接缝微渐变防爆音）双模式、淡入淡出斜坡可视化与实时预览试听、音量增益与 -0.5 dB 峰值归一化、采样率/单双声道转换及无损 16-bit WAV / 128–320 kbps MP3 导出
+  - *技术方案*：`Web Audio API` (`OfflineAudioContext`) + 高清 Canvas 双层波形画布 + 纯 TS RIFF WAV 编码器 + `@breezystack/lamejs` 分块异步 MP3 编码
 - [ ] **屏幕录制与摄像头拍照（`screen-recorder`）**：基于浏览器原生 `getDisplayMedia` 免安装录屏（支持麦克风混音），本地直出 WebM/MP4
 
 ---

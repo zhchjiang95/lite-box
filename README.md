@@ -288,10 +288,19 @@ src/
    │  ├─ meta.ts              # 工具元数据
    │  ├─ engine.ts            # 基于 tyme4ts 的 6×7 月视图矩阵、老黄历宜忌/冲煞/方位/九星/十二时辰、多历法互转与农历生日 ICS 引擎
    │  └─ index.tsx            # 双栏万年历与择日筛选、五历法实时互转及农历生日查未来公历工作台
-   └─ magnet-player/          # 磁力在线播放
+   ├─ magnet-player/          # 磁力在线播放
+   │  ├─ meta.ts              # 工具元数据
+   │  ├─ api.ts               # 磁力服务探活、口令鉴权、HTTP 206 / FFmpeg 流地址、WebVTT 字幕与外置播放器直链构造
+   │  └─ index.tsx            # 影院播放器、按需省盘缓存监控、剧集选片、字幕切换与任务清理工作台
+   ├─ video-frames/           # 视频逐帧截图提取
+   │  ├─ meta.ts              # 工具元数据
+   │  ├─ engine.ts            # 本地 Canvas 逐帧抽取、时间码水印、离屏批量抽帧、fflate ZIP 打包与电影分镜拼图板渲染引擎
+   │  └─ index.tsx            # 逐帧预览操控台、区间批量抽帧控制台、画廊管理与高清灯箱工作台
+   └─ audio-cutter/           # 音频剪切与格式转换
       ├─ meta.ts              # 工具元数据
-      ├─ api.ts               # 磁力服务探活、口令鉴权、HTTP 206 / FFmpeg 流地址、WebVTT 字幕与外置播放器直链构造
-      └─ index.tsx            # 影院播放器、按需省盘缓存监控、剧集选片、字幕切换与任务清理工作台
+      ├─ engine.ts            # Web Audio API 离屏剪辑、淡入淡出/归一化、纯 TS 16-bit WAV 与 @breezystack/lamejs 分块 MP3 编码引擎
+      ├─ WaveformCanvas.tsx   # Retina 双层峰值/RMS 交互波形画布（1×–16× 缩放、拖拽选区手柄、淡入淡出包络可视化）
+      └─ index.tsx            # 可视化选区剪辑、实时特效试听与多参数 WAV/MP3 导出工作台
 ```
 
 ---
