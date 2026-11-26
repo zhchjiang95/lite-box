@@ -3,14 +3,31 @@
   "host": "0.0.0.0",
   "distDir": "",
   "enableCompression": true,
+  "trustProxy": false,
+  "adminToken": "请替换为你自己的高强度主口令",
   "magnet": {
     "enabled": true,
-    "token": "请替换为你自己的高强度访问口令",
+    "token": "",
     "cacheDir": "D:/LiteBoxMagnetCache",
     "idleMinutes": 20,
     "maxTasks": 2,
     "uploadLimitBytes": 524288,
     "downloadLimitBytes": -1,
     "ffmpegPath": "ffmpeg"
+  },
+  "tts": {
+    "enabled": true,
+    "token": "",
+    "dailyFreeLimit": 3,
+    "freeMaxChars": 1000,
+    "maxChars": 15000
+  },
+  "logging": {
+    "enabled": true,
+    "dir": "./logs",
+    "retentionDays": 14,
+    "console": true,
+    "logStaticAssets": false,
+    "statsToken": ""
   }
 }

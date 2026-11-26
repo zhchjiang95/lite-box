@@ -72,6 +72,12 @@ export function loadServerConfig() {
 
   const magnetFile =
     fileConfig.magnet && typeof fileConfig.magnet === 'object' ? fileConfig.magnet : {}
+  const ttsFile = fileConfig.tts && typeof fileConfig.tts === 'object' ? fileConfig.tts : {}
+  const logFile =
+    fileConfig.logging && typeof fileConfig.logging === 'object' ? fileConfig.logging : {}
+
+  const rawLogDir = parseStr(process.env.LOG_DIR, logFile.dir, '')
+  const logDir = rawLogDir ? path.resolve(SERVER_ROOT, rawLogDir) : path.join(SERVER_ROOT, 'logs')
 
   const rawCacheDir = parseStr(process.env.MAGNET_CACHE_DIR, magnetFile.cacheDir, '')
   const cacheDir = rawCacheDir
@@ -79,6 +85,14 @@ export function loadServerConfig() {
     : path.resolve(path.join(os.tmpdir(), 'litebox-magnet'))
 
   const rawDistDir = parseStr(process.env.DIST_DIR, fileConfig.distDir, '')
+  const adminToken = parseStr(process.env.ADMIN_TOKEN, fileConfig.adminToken, '')
+  const magnetToken = parseStr(process.env.MAGNET_TOKEN, magnetFile.token, '') || adminToken
+  const ttsToken = parseStr(process.env.TTS_TOKEN, ttsFile.token, '') || adminToken
+  const statsToken =
+    parseStr(process.env.LOG_STATS_TOKEN, logFile.statsToken, '') ||
+    adminToken ||
+    magnetToken ||
+    ttsToken
 
   return {
     configPath,
@@ -91,9 +105,12 @@ export function loadServerConfig() {
       fileConfig.enableCompression,
       true,
     ),
+    // 直接端口转发保持 false 防止伪造 X-Forwarded-For 绕过按 IP 限次；前置 Nginx/Caddy 反代时再设为 true
+    trustProxy: parseBool(process.env.TRUST_PROXY, fileConfig.trustProxy, false),
+    adminToken,
     magnet: {
       enabled: parseBool(process.env.ENABLE_MAGNET, magnetFile.enabled, true),
-      token: parseStr(process.env.MAGNET_TOKEN, magnetFile.token, ''),
+      token: magnetToken,
       cacheDir,
       idleMinutes: Math.max(2, parseNum(process.env.MAGNET_IDLE_MINUTES, magnetFile.idleMinutes, 30)),
       maxTasks: Math.max(
@@ -111,6 +128,33 @@ export function loadServerConfig() {
         -1,
       ),
       ffmpegPath: parseStr(process.env.FFMPEG_PATH, magnetFile.ffmpegPath, 'ffmpeg') || 'ffmpeg',
+    },
+    tts: {
+      enabled: parseBool(process.env.ENABLE_TTS, ttsFile.enabled, true),
+      token: ttsToken,
+      // 每 IP 每自然天免费合成次数（0=必须输口令，-1=不限次）
+      dailyFreeLimit: parseNum(process.env.TTS_DAILY_FREE_LIMIT, ttsFile.dailyFreeLimit, 3),
+      // 免费匿名访客单次合成字数上限
+      freeMaxChars: Math.max(
+        100,
+        Math.min(20000, parseNum(process.env.TTS_FREE_MAX_CHARS, ttsFile.freeMaxChars, 1000)),
+      ),
+      // 口令解锁后的单次最大字数上限
+      maxChars: Math.max(
+        500,
+        Math.min(50000, parseNum(process.env.TTS_MAX_CHARS, ttsFile.maxChars, 15000)),
+      ),
+    },
+    logging: {
+      enabled: parseBool(process.env.LOG_ENABLED, logFile.enabled, true),
+      dir: logDir,
+      retentionDays: Math.max(
+        1,
+        Math.min(365, parseNum(process.env.LOG_RETENTION_DAYS, logFile.retentionDays, 14)),
+      ),
+      console: parseBool(process.env.LOG_CONSOLE, logFile.console, true),
+      logStaticAssets: parseBool(process.env.LOG_STATIC_ASSETS, logFile.logStaticAssets, false),
+      statsToken,
     },
   }
 }

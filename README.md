@@ -296,11 +296,15 @@ src/
    │  ├─ meta.ts              # 工具元数据
    │  ├─ engine.ts            # 本地 Canvas 逐帧抽取、时间码水印、离屏批量抽帧、fflate ZIP 打包与电影分镜拼图板渲染引擎
    │  └─ index.tsx            # 逐帧预览操控台、区间批量抽帧控制台、画廊管理与高清灯箱工作台
-   └─ audio-cutter/           # 音频剪切与格式转换
+   ├─ audio-cutter/           # 音频剪切与格式转换
+   │  ├─ meta.ts              # 工具元数据
+   │  ├─ engine.ts            # Web Audio API 离屏剪辑、淡入淡出/归一化、纯 TS 16-bit WAV 与 @breezystack/lamejs 分块 MP3 编码引擎
+   │  ├─ WaveformCanvas.tsx   # Retina 双层峰值/RMS 交互波形画布（1×–16× 缩放、拖拽选区手柄、淡入淡出包络可视化）
+   │  └─ index.tsx            # 可视化选区剪辑、实时特效试听与多参数 WAV/MP3 导出工作台
+   └─ text-to-speech/         # 文字转语音与配音
       ├─ meta.ts              # 工具元数据
-      ├─ engine.ts            # Web Audio API 离屏剪辑、淡入淡出/归一化、纯 TS 16-bit WAV 与 @breezystack/lamejs 分块 MP3 编码引擎
-      ├─ WaveformCanvas.tsx   # Retina 双层峰值/RMS 交互波形画布（1×–16× 缩放、拖拽选区手柄、淡入淡出包络可视化）
-      └─ index.tsx            # 可视化选区剪辑、实时特效试听与多参数 WAV/MP3 导出工作台
+      ├─ engine.ts            # 双引擎 TTS 接口封装、多角色剧本解析器（[角色名] 语法）与同步字幕工具
+      └─ index.tsx            # Edge 神经语音 MP3+SRT 配音、主播试听、多角色编排与浏览器离线跟读工作台
 ```
 
 ---

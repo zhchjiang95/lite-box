@@ -11,6 +11,7 @@
     "start": "node index.mjs"
   },
   "optionalDependencies": {
+    "msedge-tts": "^2.1.1",
     "webtorrent": "^3.0.21"
   },
   "pnpm": {
