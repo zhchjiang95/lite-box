@@ -132,6 +132,8 @@
   - *技术方案*：`qrcode` 矩阵 + 自研 Canvas/SVG 双渲染器 + `fflate` 批量打包 + 原生 `BarcodeDetector` / `jsqr` 多尺度反色离线解码
 - [x] **条形码生成（`barcode`）**：支持 CODE128 / 128B / 128C、EAN-13、EAN-8、UPC-A、CODE39、ITF-14、ITF、MSI、Codabar、Pharmacode 等 12 种国际条码制式，内置 GS1 Modulo-10 校验码自动补全与一键修正、随机合法示例、条纹/字号/透明底/印刷级 3× PNG 与无损 SVG 导出、连号流水号批量生成 ZIP 及多列 A4 标签直接打印
   - *技术方案*：`jsbarcode` + `fflate` 批量打包 + 原生矢量打印视图
+- [x] **印章生成器（`seal-generator`）**：纯浏览器离线电子印章与书画篆刻工坊，覆盖圆形企业公章/合同专用章（黄金比例五角星、弧形主字与字宽压缩、底部 13 位防伪码）、椭圆形发票/财务专用章（椭圆真弧长等距排字与 18 位税号）、方形个人私章/书画闲章（朱文阳刻与真透明镂空白文阴刻、传统右→左竖排与一键补“印/之印”）及长方形审核/日期/付讫章；内置确定性多尺度物理印泥做旧引擎、本地自定义 `.ttf/.otf/.woff2` 字体加载、透明/宣纸/模拟合同正片叠底预览、300 DPI 实体毫米 PNG 与矢量 SVG 导出，并支持拖入文档图片实时拖拽定位在线盖章合成
+  - *技术方案*：自研 Canvas 2D / SVG 双渲染引擎 + 椭圆数值弧长采样 + 确定性值噪声印泥斑驳算法 + `FontFace` 本地字体加载 + `multiply` 正片叠底合成
 - [ ] **随机密码与密钥生成器（`password-generator`）**：基于密码学安全随机数 `crypto.getRandomValues`，可定制长度、字符集、排除易混淆字符、批量生成与熵值强度评估
 - [ ] **UUID / ULID / NanoID 批量生成（`uuid-generator`）**：支持 UUID v4 / v7、ULID、自定义字母表 NanoID 批量生成与复制
 - [ ] **占位图生成（`placeholder-image`）**：自定义尺寸、背景色/渐变、文字内容与字号，一键生成开发测试用占位图（PNG / SVG / DataURL）

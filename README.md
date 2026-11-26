@@ -301,10 +301,15 @@ src/
    │  ├─ engine.ts            # Web Audio API 离屏剪辑、淡入淡出/归一化、纯 TS 16-bit WAV 与 @breezystack/lamejs 分块 MP3 编码引擎
    │  ├─ WaveformCanvas.tsx   # Retina 双层峰值/RMS 交互波形画布（1×–16× 缩放、拖拽选区手柄、淡入淡出包络可视化）
    │  └─ index.tsx            # 可视化选区剪辑、实时特效试听与多参数 WAV/MP3 导出工作台
-   └─ text-to-speech/         # 文字转语音与配音
+   ├─ text-to-speech/         # 文字转语音与配音
+   │  ├─ meta.ts              # 工具元数据
+   │  ├─ engine.ts            # 双引擎 TTS 接口封装、多角色剧本解析器（[角色名] 语法）与同步字幕工具
+   │  └─ index.tsx            # Edge 神经语音 MP3+SRT 配音、主播试听、多角色编排与浏览器离线跟读工作台
+   └─ seal-generator/         # 印章生成器
       ├─ meta.ts              # 工具元数据
-      ├─ engine.ts            # 双引擎 TTS 接口封装、多角色剧本解析器（[角色名] 语法）与同步字幕工具
-      └─ index.tsx            # Edge 神经语音 MP3+SRT 配音、主播试听、多角色编排与浏览器离线跟读工作台
+      ├─ types.ts             # 4 大印章类型、8 套场景模板、印泥配色与 300 DPI 实体尺寸配置
+      ├─ engine.ts            # Canvas/SVG 双渲染引擎、椭圆真弧长排字、白文真镂空、物理印泥做旧与图片盖章合成
+      └─ index.tsx            # 实时多底衬预览（透明/宣纸/模拟合同）、本地字体导入与交互式图片盖章工作台
 ```
 
 ---
