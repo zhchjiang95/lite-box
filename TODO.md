@@ -68,6 +68,15 @@
 
 ---
 
+## 三之二、文件处理（`file`）
+
+- [x] **ZIP 在线解压与预览（`zip-extract`）**：纯浏览器本地压缩包资源管理器，支持标准 ZIP / ZIP64 与 AES-256 / ZipCrypto 密码加密包解密、智能识别 UTF-8 / Windows GB18030(GBK) / Big5 / Shift-JIS / EUC-KR 防乱码、嵌套目录树浏览与全包搜索、自动隐藏 `__MACOSX`/`.DS_Store` 系统垃圾文件、免解压在线预览图片（含 HEIC）/ 代码语法高亮（含 JSON 美化与编码切换）/ PDF / 音视频 / 嵌套 ZIP 钻取与 Hex 文件头检视，以及 Chrome/Edge 原生 File System Access API 流式一键解压到本地文件夹与勾选项重打包下载
+  - *技术方案*：`@zip.js/zip.js`（Web Worker + 原生流式解压 + Web Crypto AES 解密）+ Zip Slip 安全路径消毒 + File System Access API + `highlight.js` 按需高亮
+- [x] **字体编辑器与子集裁剪（`font-editor`）**：纯浏览器本地 TTF / OTF / WOFF 字体字形编辑器与瘦身裁剪工具，毫秒级解析万字中文字库全部 Unicode 码点与区段统计，支持可视化字形网格点选删字、输入/粘贴批量删字、按字符区段一键清理，以及「仅保留指定字（快捷删除其余全部）」白名单模式（含缺失字符提示与数字/字母/标点快捷字符包），支持修改字体族名/字重/版权、导出精简 TTF / WOFF / SVG、生成 `@font-face` CSS 并原地打字检验裁剪效果
+  - *技术方案*：自研极速 SFNT (`cmap` format 4/12 + `name` + WOFF `fflate` 解压) 二进制解析器 + `fonteditor-core` 按需子集裁剪与 TTF/WOFF 导出 + `FontFace` 实时字形渲染
+
+---
+
 ## 四、局域网互联（`lan`）
 
 > 依托独立部署目录 `server/` 内置的零依赖原生 WebSocket 信令（`/ws/lan`）与 WebRTC 点对点加密通道实现，文件与音视频数据优先在局域网内直传、绝不落盘存储。
@@ -134,6 +143,8 @@
   - *技术方案*：`jsbarcode` + `fflate` 批量打包 + 原生矢量打印视图
 - [x] **印章生成器（`seal-generator`）**：纯浏览器离线电子印章与书画篆刻工坊，覆盖圆形企业公章/合同专用章（黄金比例五角星、弧形主字与字宽压缩、底部 13 位防伪码）、椭圆形发票/财务专用章（椭圆真弧长等距排字与 18 位税号）、方形个人私章/书画闲章（朱文阳刻与真透明镂空白文阴刻、传统右→左竖排与一键补“印/之印”）及长方形审核/日期/付讫章；内置确定性多尺度物理印泥做旧引擎、本地自定义 `.ttf/.otf/.woff2` 字体加载、透明/宣纸/模拟合同正片叠底预览、300 DPI 实体毫米 PNG 与矢量 SVG 导出，并支持拖入文档图片实时拖拽定位在线盖章合成
   - *技术方案*：自研 Canvas 2D / SVG 双渲染引擎 + 椭圆数值弧长采样 + 确定性值噪声印泥斑驳算法 + `FontFace` 本地字体加载 + `multiply` 正片叠底合成
+- [x] **手写签名生成（`signature-pad`）**：纯浏览器离线手写电子签名板，支持鼠标、触控屏与手写笔高刷压感采集，内置钢笔锋 / 签字笔 / 毛笔韵三款速度与压感笔触物理引擎、防抖平滑与已写签名一键换色换笔锋；提供签字基线/田字参考线、全屏手写模式、撤销重做、自动紧致裁切多余透明白边、本机 `localStorage` 常用签名库，一键导出 1×–3× 高清透明底 PNG、复制到剪贴板及无损矢量 SVG
+  - *技术方案*：二次贝塞尔中点插值 + 法向量双侧变宽轮廓算法（驱动 Canvas 2D 与闭合 `<path>` 矢量 SVG 双输出）+ 虚拟逻辑坐标自适应缩放
 - [ ] **随机密码与密钥生成器（`password-generator`）**：基于密码学安全随机数 `crypto.getRandomValues`，可定制长度、字符集、排除易混淆字符、批量生成与熵值强度评估
 - [ ] **UUID / ULID / NanoID 批量生成（`uuid-generator`）**：支持 UUID v4 / v7、ULID、自定义字母表 NanoID 批量生成与复制
 - [ ] **占位图生成（`placeholder-image`）**：自定义尺寸、背景色/渐变、文字内容与字号，一键生成开发测试用占位图（PNG / SVG / DataURL）
@@ -172,8 +183,6 @@
 - [x] **控制台计算器（`console-calc`）**：仿浏览器 DevTools Console 交互的实时预览计算器，零 `eval` 自研十进制高精度引擎（彻底消除 `0.1 + 0.2` 浮点误差），支持边输边出预览（含未输入完算式容错）、历史记录与 `↑`/`↓` 翻页、`#n`/`ans` 引用、中文变量与单位（`万`/`k`/`亿`）、直观百分比与取模、多进制与位运算、30+ 科学统计函数、千分位/人民币大写/多进制实时洞察、以及 Soulver 风格多行草稿纸联动算账与账单导出
 - [x] **设备信息与网速测试（`device-info`）**：纯本地全面体检设备与系统信息（UA-CH 高精度 OS/架构、CPU 逻辑核心、内存与 JS 堆占用、WebGL/WebGPU 显卡型号与纹理上限、屏幕分辨率/DPR/色域/HDR/实时刷新率测算、电池监听、本地存储配额、音视频编解码与媒体外设、18 项现代 Web API 能力与权限矩阵，支持复制 Markdown/导出 JSON 报告），内置公网 Cloudflare 边缘与自建 `/api/speedtest/*` 双引擎实时测速仪（Ping/抖动/流式下载/随机载荷上传、SVG 弧形仪表盘与实时波形图、按需公网 IP 查询与历史对比）
 - [x] **竞彩赛果大宽表（`sporttery-results`）**：迁移自 `sporttery` 项目的体彩足球 15 列完赛开奖宽表，配合模块化零依赖后端 `/api/sporttery/results`（受控 6 并发池限流 + 单场 SP 24h 缓存 + 列表 5m 缓存 + 90 天跨度自动保护），前端支持快捷/自定义日期、联赛筛选与不足 10 条自动分页补齐、队名搜索、胜平负/单关过滤、赔率列排序、冻结左侧对阵列、触底无限加载，以及一键导出 Excel 兼容 CSV 与制表符复制
-- [x] **ZIP 在线解压与预览（`zip-extract`）**：纯浏览器本地压缩包资源管理器，支持标准 ZIP / ZIP64 与 AES-256 / ZipCrypto 密码加密包解密、智能识别 UTF-8 / Windows GB18030(GBK) / Big5 / Shift-JIS / EUC-KR 防乱码、嵌套目录树浏览与全包搜索、自动隐藏 `__MACOSX`/`.DS_Store` 系统垃圾文件、免解压在线预览图片（含 HEIC）/ 代码语法高亮（含 JSON 美化与编码切换）/ PDF / 音视频 / 嵌套 ZIP 钻取与 Hex 文件头检视，以及 Chrome/Edge 原生 File System Access API 流式一键解压到本地文件夹与勾选项重打包下载
-  - *技术方案*：`@zip.js/zip.js`（Web Worker + 原生流式解压 + Web Crypto AES 解密）+ Zip Slip 安全路径消毒 + File System Access API + `highlight.js` 按需高亮
 - [ ] **番茄钟与白噪音（`pomodoro`）**：纯 Web Audio API 合成雨声/白噪音/粉红噪音 + 专注倒计时，支持桌面通知
 - [ ] **手持弹幕 / 全屏时钟（`fullscreen-clock`）**：适合平板/桌面横屏放置的翻页大字时钟或全屏滚动 LED 弹幕
 

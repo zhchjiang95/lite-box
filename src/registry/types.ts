@@ -6,6 +6,7 @@ export type CategoryId =
   | 'image'
   | 'pdf'
   | 'word'
+  | 'file'
   | 'lan'
   | 'text'
   | 'encode'

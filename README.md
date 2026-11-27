@@ -77,7 +77,7 @@ src/
 │  └─ utils.ts                # 类名合并、字节格式化等
 ├─ pages/                     # 首页、分类页、收藏与最近、工具详情容器页、404
 ├─ registry/
-│  ├─ categories.ts           # 11 大工具分类定义与渐变色配置（含 Word 工具、局域网互联、日历历法）
+│  ├─ categories.ts           # 12 大工具分类定义与渐变色配置（含 Word 工具、文件处理、局域网互联、日历历法）
 │  ├─ index.ts                # 核心：自动扫描 src/tools/*/meta.ts 生成工具注册表
 │  ├─ planned.ts              # “即将上线”工具预览列表
 │  └─ types.ts                # 工具与分类类型定义
@@ -330,14 +330,22 @@ src/
    │  ├─ gifenc.d.ts          # gifenc 编码器类型声明
    │  ├─ engine.ts            # 离屏抽帧、胶片缩略图提取、4×4 Bayer 有序抖动、双调色板与 gifenc 编码引擎
    │  └─ index.tsx            # 可视化胶片双柄时间轴、区间循环试播、配文烧录与多版本对比工作台
-   └─ audio-tag-editor/       # 歌曲信息解析与标签编辑
+   ├─ audio-tag-editor/       # 歌曲信息解析与标签编辑
+   │  ├─ meta.ts              # 工具元数据
+   │  ├─ types.ts             # 标签模型、音频规格与批量专辑编辑类型定义
+   │  ├─ writers.ts           # 纯 TS 零重编码无损写回器（MP3 ID3v2.3 / FLAC Vorbis+Picture / M4A Atom+stco）
+   │  ├─ lrc.ts               # LRC 同步歌词解析（含双语合并）与老旧 MP3 GBK 乱码智能检测修复
+   │  ├─ engine.ts            # music-metadata 解析、封面规范化、单曲无损保存与专辑 ZIP 打包引擎
+   │  ├─ BatchAlbumModal.tsx  # 整张专辑统一修改歌手/专辑/年份/流派/封面弹窗
+   │  └─ index.tsx            # 曲目队列、试听跟唱、标签表单、封面提取替换与批处理工作台
+   ├─ font-editor/            # 字体编辑器与子集裁剪
+   │  ├─ meta.ts              # 工具元数据（归类至“文件处理”）
+   │  ├─ engine.ts            # 极速 SFNT/WOFF 码点解析、Unicode 区段统计与 fonteditor-core 子集化导出引擎
+   │  └─ index.tsx            # 仅保留白名单、批量删字、按区段一键清理、可视化字形网格与实时验效工作台
+   └─ signature-pad/          # 手写签名生成
       ├─ meta.ts              # 工具元数据
-      ├─ types.ts             # 标签模型、音频规格与批量专辑编辑类型定义
-      ├─ writers.ts           # 纯 TS 零重编码无损写回器（MP3 ID3v2.3 / FLAC Vorbis+Picture / M4A Atom+stco）
-      ├─ lrc.ts               # LRC 同步歌词解析（含双语合并）与老旧 MP3 GBK 乱码智能检测修复
-      ├─ engine.ts            # music-metadata 解析、封面规范化、单曲无损保存与专辑 ZIP 打包引擎
-      ├─ BatchAlbumModal.tsx  # 整张专辑统一修改歌手/专辑/年份/流派/封面弹窗
-      └─ index.tsx            # 曲目队列、试听跟唱、标签表单、封面提取替换与批处理工作台
+      ├─ engine.ts            # 速度/压感变宽笔锋算法、二次贝塞尔轮廓生成、自动紧致裁切透明 PNG/矢量 SVG 与本地签名库
+      └─ index.tsx            # 高清手写签名板（钢笔/签字笔/毛笔、全屏手写、撤销重做、一键换色与常用签名库）
 ```
 
 ---

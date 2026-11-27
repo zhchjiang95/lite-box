@@ -21,6 +21,7 @@
     "docx-preview": "^0.4.1",
     "exifreader": "^4.54.0",
     "fflate": "^0.8.3",
+    "fonteditor-core": "^2.6.3",
     "fuse.js": "^7.5.0",
     "gifenc": "^1.0.3",
     "heic-to": "^1.6.7",
