@@ -17,9 +17,12 @@ import {
 
 const RTC_CONFIG: RTCConfiguration = {
   iceServers: [
-    { urls: 'stun:stun.l.google.com:19302' },
+    // 国内低延迟可用 STUN，避免 Google STUN 不可达拖慢局域网建连
+    { urls: 'stun:stun.miwifi.com:3478' },
     { urls: 'stun:stun.qq.com:3478' },
+    { urls: 'stun:stun.cloudflare.com:3478' },
   ],
+  iceCandidatePoolSize: 2,
 }
 
 export interface ScreenClientCallbacks {
@@ -54,10 +57,12 @@ export class LanScreenClient {
   private castTitle = ''
   private qualityId: QualityPresetId = '1080p30'
   private viewerPcs = new Map<string, RTCPeerConnection>()
+  private viewerPendingIce = new Map<string, RTCIceCandidateInit[]>()
 
   /** 观看端状态 */
   private watchingHostId: string | null = null
   private viewerPc: RTCPeerConnection | null = null
+  private hostPendingIce: RTCIceCandidateInit[] = []
   private remoteStream: MediaStream | null = null
   private statsTimer: number | null = null
   private prevStatsBytes = 0
@@ -445,6 +450,10 @@ export class LanScreenClient {
 
     try {
       await pc.setRemoteDescription(new RTCSessionDescription(sdp))
+      while (this.hostPendingIce.length > 0) {
+        const c = this.hostPendingIce.shift()!
+        await pc.addIceCandidate(new RTCIceCandidate(c)).catch(() => {})
+      }
       const answer = await pc.createAnswer()
       await pc.setLocalDescription(answer)
       this.sendWsJson({
@@ -624,6 +633,11 @@ export class LanScreenClient {
       if (!pc) return
       try {
         await pc.setRemoteDescription(new RTCSessionDescription(data.sdp as RTCSessionDescriptionInit))
+        const pending = this.viewerPendingIce.get(fromId) ?? []
+        this.viewerPendingIce.delete(fromId)
+        for (const c of pending) {
+          await pc.addIceCandidate(new RTCIceCandidate(c)).catch(() => {})
+        }
       } catch {
         // 忽略
       }
@@ -631,12 +645,23 @@ export class LanScreenClient {
     }
 
     if (kind === 'screen-ice') {
-      const candidate = new RTCIceCandidate(data.candidate as RTCIceCandidateInit)
+      const candInit = data.candidate as RTCIceCandidateInit
+      if (!candInit) return
       if (data.role === 'viewer') {
         const pc = this.viewerPcs.get(fromId)
-        if (pc) void pc.addIceCandidate(candidate).catch(() => {})
-      } else if (data.role === 'host' && this.watchingHostId === fromId && this.viewerPc) {
-        void this.viewerPc.addIceCandidate(candidate).catch(() => {})
+        if (pc && pc.remoteDescription) {
+          void pc.addIceCandidate(new RTCIceCandidate(candInit)).catch(() => {})
+        } else {
+          const list = this.viewerPendingIce.get(fromId) ?? []
+          list.push(candInit)
+          this.viewerPendingIce.set(fromId, list)
+        }
+      } else if (data.role === 'host' && this.watchingHostId === fromId) {
+        if (this.viewerPc && this.viewerPc.remoteDescription) {
+          void this.viewerPc.addIceCandidate(new RTCIceCandidate(candInit)).catch(() => {})
+        } else {
+          this.hostPendingIce.push(candInit)
+        }
       }
     }
   }

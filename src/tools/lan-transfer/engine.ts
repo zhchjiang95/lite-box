@@ -24,13 +24,16 @@ const P2P_CHUNK_SIZE = 64 * 1024
 const P2P_HIGH_WATERMARK = 512 * 1024
 const RELAY_CHUNK_SIZE = 32 * 1024
 const RELAY_HIGH_WATERMARK = 512 * 1024
-const P2P_CONNECT_TIMEOUT_MS = 4500
+const P2P_CONNECT_TIMEOUT_MS = 8000
 
 const RTC_CONFIG: RTCConfiguration = {
   iceServers: [
-    { urls: 'stun:stun.l.google.com:19302' },
+    // 国内直连低延迟 STUN 优先，移除国内无法连通的 Google STUN 避免建连卡死超时
+    { urls: 'stun:stun.miwifi.com:3478' },
     { urls: 'stun:stun.qq.com:3478' },
+    { urls: 'stun:stun.cloudflare.com:3478' },
   ],
+  iceCandidatePoolSize: 2,
 }
 
 export interface LanClientCallbacks {
@@ -60,6 +63,15 @@ interface OutgoingSession {
   watchdog?: number
   cancelled: boolean
   startedStreaming: boolean
+  /** 远端 SDP Answer 是否已设置完成（未完成前到达的 ICE 候选需暂存队列） */
+  remoteDescReady: boolean
+  pendingIce: RTCIceCandidateInit[]
+  /** 链路诊断计数，用于排查回退原因 */
+  answerReceived: boolean
+  localHostCount: number
+  localSrflxCount: number
+  remoteCandidateCount: number
+  remoteMdnsOnly: boolean
   acceptResolver?: (accepted: boolean) => void
 }
 
@@ -72,6 +84,8 @@ interface IncomingSession {
   totalSize: number
   pc?: RTCPeerConnection
   dc?: RTCDataChannel
+  remoteDescReady: boolean
+  pendingIce: RTCIceCandidateInit[]
   accepted: boolean
   cancelled: boolean
   currentFileIndex: number
@@ -131,6 +145,8 @@ export class LanTransferClient {
   private peers = new Map<string, PeerInfo>()
   private outgoing = new Map<string, OutgoingSession>()
   private incoming = new Map<string, IncomingSession>()
+  /** 在 Offer 尚未处理完前提前到达的 ICE 候选缓冲，防止竞态丢失局域网 host 候选 */
+  private earlyIce = new Map<string, RTCIceCandidateInit[]>()
 
   constructor(callbacks: LanClientCallbacks, options?: { customName?: string; initialPairCode?: string | null }) {
     this.callbacks = callbacks
@@ -270,6 +286,13 @@ export class LanTransferClient {
       transport: 'p2p',
       cancelled: false,
       startedStreaming: false,
+      remoteDescReady: false,
+      pendingIce: [],
+      answerReceived: false,
+      localHostCount: 0,
+      localSrflxCount: 0,
+      remoteCandidateCount: 0,
+      remoteMdnsOnly: true,
     }
     this.outgoing.set(transferId, session)
 
@@ -291,6 +314,9 @@ export class LanTransferClient {
 
       pc.onicecandidate = (e) => {
         if (e.candidate && !session.cancelled && session.transport === 'p2p') {
+          const candStr = e.candidate.candidate || ''
+          if (candStr.includes(' typ host')) session.localHostCount++
+          if (candStr.includes(' typ srflx')) session.localSrflxCount++
           this.sendWsJson({
             type: 'signal',
             to: peerId,
@@ -299,15 +325,28 @@ export class LanTransferClient {
         }
       }
 
-      pc.onconnectionstatechange = () => {
+      const handleFatalFailure = () => {
         if (session.cancelled || session.transport !== 'p2p') return
-        if (pc.connectionState === 'failed' || pc.connectionState === 'disconnected') {
-          if (!session.startedStreaming) {
-            void this.fallbackToRelay(session, 'P2P 通道受限，已自动切换中转兜底')
-          } else {
-            this.emitTransfer(session, 'error', 0, 0, '', 'P2P 连接意外中断')
-            this.cleanupOutgoing(session)
-          }
+        if (!session.startedStreaming) {
+          void this.fallbackToRelay(session, this.buildP2PFallbackReason(session, 'P2P 建连失败'))
+        } else {
+          this.emitTransfer(session, 'error', 0, 0, '', 'P2P 连接意外中断')
+          this.cleanupOutgoing(session)
+        }
+      }
+
+      pc.onconnectionstatechange = () => {
+        // 握手期间个别浏览器会短暂出现 disconnected，只对真正的 failed 立即回退
+        if (pc.connectionState === 'failed') {
+          handleFatalFailure()
+        } else if (pc.connectionState === 'disconnected' && session.startedStreaming) {
+          handleFatalFailure()
+        }
+      }
+
+      pc.oniceconnectionstatechange = () => {
+        if (pc.iceConnectionState === 'failed') {
+          handleFatalFailure()
         }
       }
 
@@ -345,14 +384,14 @@ export class LanTransferClient {
 
       dc.onerror = () => {
         if (!session.startedStreaming && session.transport === 'p2p' && !session.cancelled) {
-          void this.fallbackToRelay(session, 'P2P 数据通道异常，已自动切换中转兜底')
+          void this.fallbackToRelay(session, this.buildP2PFallbackReason(session, 'P2P 数据通道异常'))
         }
       }
 
-      // 4.5 秒 P2P 建连看门狗：超时即无感回退至服务端内存流兜底
+      // 8 秒 P2P 建连看门狗：超时即无感回退至服务端内存流兜底，并给出准确诊断提示
       session.watchdog = window.setTimeout(() => {
         if (!session.cancelled && session.transport === 'p2p' && dc.readyState !== 'open') {
-          void this.fallbackToRelay(session, '局域网直连超时，已自动启用中转兜底通道')
+          void this.fallbackToRelay(session, this.buildP2PFallbackReason(session, '局域网直连超时'))
         }
       }, P2P_CONNECT_TIMEOUT_MS)
 
@@ -361,7 +400,13 @@ export class LanTransferClient {
       this.sendWsJson({
         type: 'signal',
         to: peerId,
-        data: { kind: 'offer', transferId, sdp: pc.localDescription },
+        data: {
+          kind: 'offer',
+          transferId,
+          sdp: pc.localDescription
+            ? { type: pc.localDescription.type, sdp: pc.localDescription.sdp }
+            : offer,
+        },
       })
     } catch {
       void this.fallbackToRelay(session, 'P2P 初始化失败，已自动切换中转兜底')
@@ -682,7 +727,46 @@ export class LanTransferClient {
     }
   }
 
-  /** 处理 WebRTC SDP / ICE 握手信令 */
+  /** 汇总 WebRTC 建连失败时的网络诊断文案，方便排查防火墙/VPN/mDNS 阻断 */
+  private buildP2PFallbackReason(session: OutgoingSession, prefix: string): string {
+    const iceState = session.pc?.iceConnectionState ?? 'unknown'
+    const connState = session.pc?.connectionState ?? 'unknown'
+    console.info('[lan-transfer] P2P 回退诊断:', {
+      transferId: session.transferId,
+      answerReceived: session.answerReceived,
+      localHostCount: session.localHostCount,
+      localSrflxCount: session.localSrflxCount,
+      remoteCandidateCount: session.remoteCandidateCount,
+      remoteMdnsOnly: session.remoteMdnsOnly,
+      iceState,
+      connState,
+    })
+
+    if (!session.answerReceived) {
+      return `${prefix}（对端未响应 WebRTC 握手），已自动切换中转通道`
+    }
+    if (session.remoteCandidateCount === 0) {
+      return `${prefix}（未收到对端网络候选），已自动切换中转通道`
+    }
+    if (session.remoteMdnsOnly && session.localSrflxCount === 0) {
+      return `${prefix}（局域网 mDNS/UDP 受限或开启了代理/防火墙），已自动切换中转通道`
+    }
+    return `${prefix}（UDP 直连被防火墙/AP隔离或代理拦截），已自动切换中转通道`
+  }
+
+  /** 将暂存的 ICE 候选全部写入已完成 setRemoteDescription 的连接 */
+  private async flushPendingIce(pc: RTCPeerConnection, queue: RTCIceCandidateInit[]) {
+    while (queue.length > 0) {
+      const cand = queue.shift()!
+      try {
+        await pc.addIceCandidate(new RTCIceCandidate(cand))
+      } catch {
+        // 忽略单个过期或无效候选
+      }
+    }
+  }
+
+  /** 处理 WebRTC SDP / ICE 握手信令（严格排队 ICE 候选，彻底消除 setRemoteDescription 竞态丢包） */
   private async handleRtcSignal(fromId: string, data: Record<string, unknown>) {
     const transferId = String(data.transferId ?? '')
     if (!transferId) return
@@ -692,6 +776,9 @@ export class LanTransferClient {
       const peer = this.peers.get(fromId)
       const pc = new RTCPeerConnection(RTC_CONFIG)
 
+      const early = this.earlyIce.get(transferId) ?? []
+      this.earlyIce.delete(transferId)
+
       const session: IncomingSession = {
         transferId,
         peerId: fromId,
@@ -700,6 +787,8 @@ export class LanTransferClient {
         files: [],
         totalSize: 0,
         pc,
+        remoteDescReady: false,
+        pendingIce: early,
         accepted: false,
         cancelled: false,
         currentFileIndex: -1,
@@ -744,12 +833,21 @@ export class LanTransferClient {
 
       try {
         await pc.setRemoteDescription(new RTCSessionDescription(data.sdp as RTCSessionDescriptionInit))
+        session.remoteDescReady = true
+        await this.flushPendingIce(pc, session.pendingIce)
+
         const answer = await pc.createAnswer()
         await pc.setLocalDescription(answer)
         this.sendWsJson({
           type: 'signal',
           to: fromId,
-          data: { kind: 'answer', transferId, sdp: pc.localDescription },
+          data: {
+            kind: 'answer',
+            transferId,
+            sdp: pc.localDescription
+              ? { type: pc.localDescription.type, sdp: pc.localDescription.sdp }
+              : answer,
+          },
         })
       } catch {
         this.cleanupIncoming(session)
@@ -760,8 +858,11 @@ export class LanTransferClient {
     if (data.kind === 'answer') {
       const out = this.outgoing.get(transferId)
       if (!out?.pc || out.transport !== 'p2p') return
+      out.answerReceived = true
       try {
         await out.pc.setRemoteDescription(new RTCSessionDescription(data.sdp as RTCSessionDescriptionInit))
+        out.remoteDescReady = true
+        await this.flushPendingIce(out.pc, out.pendingIce)
       } catch {
         // 超时看门狗会兜底
       }
@@ -769,16 +870,38 @@ export class LanTransferClient {
     }
 
     if (data.kind === 'ice') {
-      const candidate = new RTCIceCandidate(data.candidate as RTCIceCandidateInit)
+      const candInit = data.candidate as RTCIceCandidateInit
+      if (!candInit) return
+      const candText = candInit.candidate || ''
+
       const out = this.outgoing.get(transferId)
       if (out?.pc && out.transport === 'p2p') {
-        void out.pc.addIceCandidate(candidate).catch(() => {})
+        out.remoteCandidateCount++
+        if (candText && !candText.includes('.local')) {
+          out.remoteMdnsOnly = false
+        }
+        if (out.remoteDescReady) {
+          void out.pc.addIceCandidate(new RTCIceCandidate(candInit)).catch(() => {})
+        } else {
+          out.pendingIce.push(candInit)
+        }
         return
       }
+
       const inc = this.incoming.get(transferId)
       if (inc?.pc && inc.transport === 'p2p') {
-        void inc.pc.addIceCandidate(candidate).catch(() => {})
+        if (inc.remoteDescReady) {
+          void inc.pc.addIceCandidate(new RTCIceCandidate(candInit)).catch(() => {})
+        } else {
+          inc.pendingIce.push(candInit)
+        }
+        return
       }
+
+      // Offer 尚未创建会话前提前到达的 ICE 候选先暂存
+      const list = this.earlyIce.get(transferId) ?? []
+      list.push(candInit)
+      this.earlyIce.set(transferId, list)
     }
   }
 
@@ -822,6 +945,8 @@ export class LanTransferClient {
         transport: 'relay',
         files: [],
         totalSize: 0,
+        remoteDescReady: false,
+        pendingIce: [],
         accepted: false,
         cancelled: false,
         currentFileIndex: -1,
@@ -977,6 +1102,7 @@ export class LanTransferClient {
       // 忽略
     }
     this.outgoing.delete(session.transferId)
+    this.earlyIce.delete(session.transferId)
   }
 
   private cleanupIncoming(session: IncomingSession) {
@@ -987,6 +1113,7 @@ export class LanTransferClient {
       // 忽略
     }
     this.incoming.delete(session.transferId)
+    this.earlyIce.delete(session.transferId)
   }
 
   private sendWsJson(obj: Record<string, unknown>) {
