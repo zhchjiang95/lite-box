@@ -39,12 +39,69 @@ import {
   type AudioExportFormat,
   type ChannelPreset,
   type CutMode,
+  type Mp3BitrateKbps,
   type SampleRatePreset,
   type WaveformPeaks,
 } from './engine'
 import { WaveformCanvas } from './WaveformCanvas'
 
-const BITRATE_OPTIONS: (128 | 192 | 256 | 320)[] = [128, 192, 256, 320]
+const BITRATE_OPTIONS: { kbps: Mp3BitrateKbps; tag: string }[] = [
+  { kbps: 32, tag: '超轻人声' },
+  { kbps: 48, tag: '语音推荐' },
+  { kbps: 64, tag: '播客清晰' },
+  { kbps: 96, tag: '轻量音乐' },
+  { kbps: 128, tag: '标准音乐' },
+  { kbps: 192, tag: '高清音乐' },
+  { kbps: 256, tag: '高保真' },
+  { kbps: 320, tag: '极品音质' },
+]
+
+const EXPORT_SCENE_PRESETS: {
+  id: string
+  label: string
+  desc: string
+  format: AudioExportFormat
+  bitrate: Mp3BitrateKbps
+  sampleRate: SampleRatePreset
+  channels: ChannelPreset
+}[] = [
+  {
+    id: 'voice',
+    label: '清晰语音',
+    desc: '48k · 24kHz · 单声道',
+    format: 'mp3',
+    bitrate: 48,
+    sampleRate: '24000',
+    channels: 'mono',
+  },
+  {
+    id: 'podcast',
+    label: '播客 / 会议',
+    desc: '64k · 24kHz · 单声道',
+    format: 'mp3',
+    bitrate: 64,
+    sampleRate: '24000',
+    channels: 'mono',
+  },
+  {
+    id: 'music-std',
+    label: '标准音乐',
+    desc: '128k · 保持原样',
+    format: 'mp3',
+    bitrate: 128,
+    sampleRate: 'original',
+    channels: 'original',
+  },
+  {
+    id: 'music-hq',
+    label: '极品音乐',
+    desc: '320k · 44.1kHz · 立体声',
+    format: 'mp3',
+    bitrate: 320,
+    sampleRate: '44100',
+    channels: 'stereo',
+  },
+]
 const ZOOM_STEPS = [1, 2, 4, 8, 16]
 
 export default function AudioCutterTool() {
@@ -75,7 +132,7 @@ export default function AudioCutterTool() {
   const [gainPct, setGainPct] = useState(100)
   const [normalize, setNormalize] = useState(false)
   const [exportFormat, setExportFormat] = useState<AudioExportFormat>('mp3')
-  const [bitrate, setBitrate] = useState<128 | 192 | 256 | 320>(192)
+  const [bitrate, setBitrate] = useState<Mp3BitrateKbps>(128)
   const [sampleRate, setSampleRate] = useState<SampleRatePreset>('original')
   const [channels, setChannels] = useState<ChannelPreset>('original')
 
@@ -838,26 +895,67 @@ export default function AudioCutterTool() {
                 </div>
 
                 {exportFormat === 'mp3' && (
-                  <div className="space-y-1.5">
-                    <div className="text-xs text-muted-foreground">MP3 比特率</div>
-                    <div className="grid grid-cols-4 gap-2">
-                      {BITRATE_OPTIONS.map((kbps) => (
-                        <button
-                          key={kbps}
-                          type="button"
-                          onClick={() => setBitrate(kbps)}
-                          className={cn(
-                            'rounded-xl border py-2 font-mono text-xs font-semibold transition-colors',
-                            bitrate === kbps
-                              ? 'border-primary bg-primary/12 text-primary'
-                              : 'border-border/75 bg-background/70 text-muted-foreground hover:text-foreground',
-                          )}
-                        >
-                          {kbps} kbps
-                        </button>
-                      ))}
+                  <>
+                    {/* 场景一键预设（语音 / 播客 / 标准音乐 / 极品音乐） */}
+                    <div className="space-y-1.5">
+                      <div className="text-xs text-muted-foreground">快捷场景预设</div>
+                      <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-4">
+                        {EXPORT_SCENE_PRESETS.map((p) => {
+                          const active =
+                            exportFormat === p.format &&
+                            bitrate === p.bitrate &&
+                            sampleRate === p.sampleRate &&
+                            channels === p.channels
+                          return (
+                            <button
+                              key={p.id}
+                              type="button"
+                              onClick={() => {
+                                setExportFormat(p.format)
+                                setBitrate(p.bitrate)
+                                setSampleRate(p.sampleRate)
+                                setChannels(p.channels)
+                              }}
+                              className={cn(
+                                'rounded-xl border px-2 py-1.5 text-left transition-colors',
+                                active
+                                  ? 'border-primary bg-primary/12 text-primary'
+                                  : 'border-border/70 bg-background/60 text-foreground/85 hover:border-border',
+                              )}
+                            >
+                              <div className="text-xs font-semibold">{p.label}</div>
+                              <div className="text-[10px] text-muted-foreground">{p.desc}</div>
+                            </button>
+                          )
+                        })}
+                      </div>
                     </div>
-                  </div>
+
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between text-xs text-muted-foreground">
+                        <span>MP3 比特率</span>
+                        <span className="text-[11px]">语音推荐 48–64 kbps · 音乐推荐 128–320 kbps</span>
+                      </div>
+                      <div className="grid grid-cols-4 gap-1.5">
+                        {BITRATE_OPTIONS.map(({ kbps, tag }) => (
+                          <button
+                            key={kbps}
+                            type="button"
+                            onClick={() => setBitrate(kbps)}
+                            className={cn(
+                              'rounded-xl border px-1.5 py-1.5 text-center transition-colors',
+                              bitrate === kbps
+                                ? 'border-primary bg-primary/12 text-primary'
+                                : 'border-border/75 bg-background/70 text-muted-foreground hover:text-foreground',
+                            )}
+                          >
+                            <div className="font-mono text-xs font-semibold">{kbps}k</div>
+                            <div className="text-[10px] opacity-80">{tag}</div>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </>
                 )}
 
                 <div className="grid grid-cols-2 gap-3 text-xs">
@@ -871,7 +969,9 @@ export default function AudioCutterTool() {
                       <option value="original">保持原采样率（{(audioBuffer.sampleRate / 1000).toFixed(1)} kHz）</option>
                       <option value="48000">48.0 kHz（视频标准）</option>
                       <option value="44100">44.1 kHz（CD 音乐）</option>
-                      <option value="22050">22.05 kHz（语音小体积）</option>
+                      <option value="24000">24.0 kHz（清晰语音推荐）</option>
+                      <option value="22050">22.05 kHz（语音兼容）</option>
+                      <option value="16000">16.0 kHz（超轻人声）</option>
                     </select>
                   </div>
 

@@ -1,7 +1,8 @@
 export type CutMode = 'keep' | 'remove'
 export type AudioExportFormat = 'mp3' | 'wav'
-export type SampleRatePreset = 'original' | '48000' | '44100' | '22050'
+export type SampleRatePreset = 'original' | '48000' | '44100' | '24000' | '22050' | '16000'
 export type ChannelPreset = 'original' | 'stereo' | 'mono'
+export type Mp3BitrateKbps = 32 | 48 | 64 | 96 | 128 | 192 | 256 | 320
 
 export interface WaveformPeaks {
   /** 每个像素桶的峰值绝对幅度 0..1 */
@@ -32,7 +33,7 @@ export interface AudioProcessOptions {
 export interface AudioExportOptions extends AudioProcessOptions {
   format: AudioExportFormat
   /** MP3 码率（kbps） */
-  bitrate: 128 | 192 | 256 | 320
+  bitrate: Mp3BitrateKbps
 }
 
 const pad2 = (n: number) => String(Math.floor(n)).padStart(2, '0')
