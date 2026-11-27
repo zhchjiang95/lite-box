@@ -119,6 +119,14 @@ export function classifyFeature(method, pathname, parsedUrl) {
     return { feature: '文字转语音 · 其他接口', endpoint: `${method} /api/tts/*`, isPollNoise: false }
   }
 
+  // 2.5 视频与直播流代理
+  if (pathname.startsWith('/api/stream/')) {
+    if (pathname === '/api/stream/proxy') return { feature: '视频直播 · 跨域代理', endpoint: 'GET /api/stream/proxy', isPollNoise: true }
+    if (pathname === '/api/stream/auth') return { feature: '视频直播 · 代理口令', endpoint: 'POST /api/stream/auth', isPollNoise: false }
+    if (pathname === '/api/stream/status') return { feature: '视频直播 · 状态检测', endpoint: 'GET /api/stream/status', isPollNoise: false }
+    return { feature: '视频直播 · 其他接口', endpoint: `${method} /api/stream/*`, isPollNoise: false }
+  }
+
   // 3. 网速测试
   if (pathname.startsWith('/api/speedtest/')) {
     if (pathname === '/api/speedtest/down') return { feature: '网速测试 · 下行测速', endpoint: 'GET /api/speedtest/down', isPollNoise: false }

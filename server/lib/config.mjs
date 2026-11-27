@@ -73,6 +73,8 @@ export function loadServerConfig() {
   const magnetFile =
     fileConfig.magnet && typeof fileConfig.magnet === 'object' ? fileConfig.magnet : {}
   const ttsFile = fileConfig.tts && typeof fileConfig.tts === 'object' ? fileConfig.tts : {}
+  const streamFile =
+    fileConfig.stream && typeof fileConfig.stream === 'object' ? fileConfig.stream : {}
   const logFile =
     fileConfig.logging && typeof fileConfig.logging === 'object' ? fileConfig.logging : {}
 
@@ -88,11 +90,13 @@ export function loadServerConfig() {
   const adminToken = parseStr(process.env.ADMIN_TOKEN, fileConfig.adminToken, '')
   const magnetToken = parseStr(process.env.MAGNET_TOKEN, magnetFile.token, '') || adminToken
   const ttsToken = parseStr(process.env.TTS_TOKEN, ttsFile.token, '') || adminToken
+  const streamToken = parseStr(process.env.STREAM_TOKEN, streamFile.token, '') || adminToken
   const statsToken =
     parseStr(process.env.LOG_STATS_TOKEN, logFile.statsToken, '') ||
     adminToken ||
     magnetToken ||
-    ttsToken
+    ttsToken ||
+    streamToken
 
   return {
     configPath,
@@ -143,6 +147,20 @@ export function loadServerConfig() {
       maxChars: Math.max(
         500,
         Math.min(50000, parseNum(process.env.TTS_MAX_CHARS, ttsFile.maxChars, 15000)),
+      ),
+    },
+    stream: {
+      enabled: parseBool(process.env.ENABLE_STREAM_PROXY, streamFile.enabled, true),
+      token: streamToken,
+      // 默认拦截私网/本机 IP 防止 SSRF；如需中转局域网摄像头或内网 IPTV 源可改为 true
+      allowPrivateIp: parseBool(
+        process.env.STREAM_ALLOW_PRIVATE_IP,
+        streamFile.allowPrivateIp,
+        false,
+      ),
+      maxConcurrent: Math.max(
+        1,
+        Math.min(64, parseNum(process.env.STREAM_MAX_CONCURRENT, streamFile.maxConcurrent, 16)),
       ),
     },
     logging: {

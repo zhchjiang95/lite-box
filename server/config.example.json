@@ -22,6 +22,12 @@
     "freeMaxChars": 1000,
     "maxChars": 15000
   },
+  "stream": {
+    "enabled": true,
+    "token": "",
+    "allowPrivateIp": false,
+    "maxConcurrent": 16
+  },
   "logging": {
     "enabled": true,
     "dir": "./logs",

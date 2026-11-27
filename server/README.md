@@ -59,6 +59,10 @@ copy config.example.json config.json   # macOS / Linux 请使用 cp
 | `tts.dailyFreeLimit` | `TTS_DAILY_FREE_LIMIT` | `3` | 每 IP 每自然天免费合成次数（持久化于 `logs/quota-YYYY-MM-DD.json`；`0`=纯口令模式，`-1`=不限次） |
 | `tts.freeMaxChars` | `TTS_FREE_MAX_CHARS` | `1000` | 未解锁免费体验时的单次合成字数上限 |
 | `tts.maxChars` | `TTS_MAX_CHARS` | `15000` | 口令解锁后的单次合成最大字数上限 |
+| `stream.enabled` | `ENABLE_STREAM_PROXY` | `true` | 是否启用 `/api/stream/*` 视频与直播流跨域/防盗链代理 |
+| `stream.token` | `STREAM_TOKEN` | 兜底复用 `adminToken` | **严格私有门禁**：代理视频/直播流需校验口令，防陌生人白嫖服务器带宽 |
+| `stream.allowPrivateIp` | `STREAM_ALLOW_PRIVATE_IP` | `false` | 默认拦截私网/环回 IP 防 SSRF；如需代理局域网摄像头或内网 IPTV 源可设为 `true` |
+| `stream.maxConcurrent` | `STREAM_MAX_CONCURRENT` | `16` | 同时活跃的流媒体代理连接上限 |
 | `logging.enabled` | `LOG_ENABLED` | `true` | 是否启用访问日志与按 IP/功能维度聚合统计 |
 | `logging.dir` | `LOG_DIR` | `./logs`（`server/logs`） | 日志与统计文件落盘目录（Windows 可指向其他盘符如 `"D:/LiteBoxLogs"`） |
 | `logging.retentionDays` | `LOG_RETENTION_DAYS` | `14` | 按天轮转并自动清理超过指定天数的过期日志，严控磁盘空间 |
@@ -84,7 +88,8 @@ server/
 │  ├─ speedtest.mjs       # /api/speedtest/* 局域网与自建节点网速测试接口
 │  ├─ sporttery.mjs       # /api/sporttery/results（兼容 /api/matches/results）体彩赛果代理与缓存
 │  ├─ magnet.mjs          # /api/magnet/* 磁力/种子按需流媒体、ffmpeg 兼容转码与省磁盘缓存管理
-│  └─ tts.mjs             # /api/tts/* Edge 神经语音 MP3 合成、多角色拼接与同步 SRT 字幕（零落盘）
+│  ├─ tts.mjs             # /api/tts/* Edge 神经语音 MP3 合成、多角色拼接与同步 SRT 字幕（零落盘）
+│  └─ stream.mjs          # /api/stream/* 视频/直播流跨域与防盗链代理（自动重写 M3U8、SSRF 防护）
 └─ signaling.mjs          # /ws/lan 局域网设备发现、WebRTC 信令与极端网络中转兜底
 ```
 

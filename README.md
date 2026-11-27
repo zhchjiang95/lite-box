@@ -310,11 +310,34 @@ src/
    │  ├─ types.ts             # 4 大印章类型、8 套场景模板、印泥配色与 300 DPI 实体尺寸配置
    │  ├─ engine.ts            # Canvas/SVG 双渲染引擎、椭圆真弧长排字、白文真镂空、物理印泥做旧与图片盖章合成
    │  └─ index.tsx            # 实时多底衬预览（透明/宣纸/模拟合同）、本地字体导入与交互式图片盖章工作台
-   └─ zip-extract/            # ZIP 在线解压与预览
+   ├─ zip-extract/            # ZIP 在线解压与预览
+   │  ├─ meta.ts              # 工具元数据
+   │  ├─ engine.ts            # 基于 @zip.js/zip.js 的流式解析、AES/ZipCrypto 解密、UTF-8/GBK 防乱码、Zip Slip 消毒与本地目录直写引擎
+   │  ├─ PreviewDrawer.tsx    # 免解压在线预览器（图片/HEIC、语法高亮代码/JSON 美化、PDF、音视频、嵌套 ZIP 钻取与 Hex 头检视）
+   │  └─ index.tsx            # 嵌套压缩包导航、目录树资源管理器、密码解锁与批量提取工作台
+   ├─ stream-player/          # 视频与直播播放器
+   │  ├─ meta.ts              # 工具元数据
+   │  ├─ playlist.ts          # 协议自动识别、IPTV M3U/TXT 列表解析、SRT→WebVTT 转换与内置测试源
+   │  ├─ engine.ts            # hls.js / mpegts.js 按需懒加载播放引擎、流媒体遥测、后端代理客户端与视频帧截图
+   │  ├─ ChannelSidebar.tsx   # IPTV 频道导入（粘贴/本地文件/在线订阅）、分组搜索、收藏与历史侧栏
+   │  └─ index.tsx            # 影院播放器、实时码率/缓冲 HUD、代理口令/防盗链设置、旋转镜像与快捷键工作台
+   ├─ screen-recorder/        # 屏幕录制与摄像头拍照
+   │  ├─ meta.ts              # 工具元数据
+   │  ├─ engine.ts            # MP4/WebM 编码探测、Web Audio 双轨混音电平表、防切屏节流 Worker 画中画合成与抓拍引擎
+   │  └─ index.tsx            # 三模式（纯录屏/画中画讲解/摄像头拍照录像）实时监视器与视频/照片回放画廊工作台
+   ├─ video-to-gif/           # 视频转 GIF 动图
+   │  ├─ meta.ts              # 工具元数据
+   │  ├─ gifenc.d.ts          # gifenc 编码器类型声明
+   │  ├─ engine.ts            # 离屏抽帧、胶片缩略图提取、4×4 Bayer 有序抖动、双调色板与 gifenc 编码引擎
+   │  └─ index.tsx            # 可视化胶片双柄时间轴、区间循环试播、配文烧录与多版本对比工作台
+   └─ audio-tag-editor/       # 歌曲信息解析与标签编辑
       ├─ meta.ts              # 工具元数据
-      ├─ engine.ts            # 基于 @zip.js/zip.js 的流式解析、AES/ZipCrypto 解密、UTF-8/GBK 防乱码、Zip Slip 消毒与本地目录直写引擎
-      ├─ PreviewDrawer.tsx    # 免解压在线预览器（图片/HEIC、语法高亮代码/JSON 美化、PDF、音视频、嵌套 ZIP 钻取与 Hex 头检视）
-      └─ index.tsx            # 嵌套压缩包导航、目录树资源管理器、密码解锁与批量提取工作台
+      ├─ types.ts             # 标签模型、音频规格与批量专辑编辑类型定义
+      ├─ writers.ts           # 纯 TS 零重编码无损写回器（MP3 ID3v2.3 / FLAC Vorbis+Picture / M4A Atom+stco）
+      ├─ lrc.ts               # LRC 同步歌词解析（含双语合并）与老旧 MP3 GBK 乱码智能检测修复
+      ├─ engine.ts            # music-metadata 解析、封面规范化、单曲无损保存与专辑 ZIP 打包引擎
+      ├─ BatchAlbumModal.tsx  # 整张专辑统一修改歌手/专辑/年份/流派/封面弹窗
+      └─ index.tsx            # 曲目队列、试听跟唱、标签表单、封面提取替换与批处理工作台
 ```
 
 ---

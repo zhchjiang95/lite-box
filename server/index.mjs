@@ -30,6 +30,7 @@ import {
   handleMagnetRoutes,
 } from './routes/magnet.mjs'
 import { getTtsSummary, handleTtsRoutes } from './routes/tts.mjs'
+import { getStreamSummary, handleStreamRoutes } from './routes/stream.mjs'
 import { attachLanSignaling } from './signaling.mjs'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -79,6 +80,7 @@ const server = http.createServer(async (req, res) => {
         signaling: signalingHandle?.getStats() ?? { onlineDevices: 0, activeRooms: 0 },
         magnet: getMagnetSummary(),
         tts: getTtsSummary(),
+        stream: getStreamSummary(),
         logging: accessLogger.getSummary(),
         uptimeSec: Math.floor(process.uptime()),
       })
@@ -91,6 +93,7 @@ const server = http.createServer(async (req, res) => {
     if (await handleSportteryRoutes(req, res, pathname, parsedUrl)) return
     if (await handleMagnetRoutes(req, res, pathname, parsedUrl)) return
     if (await handleTtsRoutes(req, res, pathname, parsedUrl)) return
+    if (await handleStreamRoutes(req, res, pathname, parsedUrl)) return
 
     // 未知 /api/* 路径明确返回 404 JSON，避免落入 SPA 回退返回 index.html
     if (pathname.startsWith('/api/')) {
@@ -119,6 +122,7 @@ server.on('upgrade', (req) => {
 server.listen(PORT, HOST, () => {
   const displayHost = HOST === '0.0.0.0' ? 'localhost' : HOST
   const magnetSum = getMagnetSummary()
+  const streamSum = getStreamSummary()
   const logSum = accessLogger.getSummary()
   console.log(`
   🚀 轻匣（LiteBox）独立后端与静态服务已启动
@@ -129,6 +133,7 @@ server.listen(PORT, HOST, () => {
   ➜  赛果接口:   http://${displayHost}:${PORT}/api/sporttery/results
   ➜  磁力流媒:   http://${displayHost}:${PORT}/api/magnet/status（${magnetSum.enabled ? (magnetSum.requiresAuth ? '口令已保护' : '未设口令') : '已禁用'} | 缓存: ${magnetSum.cacheDir}）
   ➜  语音配音:   http://${displayHost}:${PORT}/api/tts/status（Edge Neural TTS · 纯内存零落盘）
+  ➜  直播代理:   http://${displayHost}:${PORT}/api/stream/status（${streamSum.enabled ? (streamSum.requiresAuth ? '口令已保护' : '未设口令') : '已禁用'} | 并发上限 ${streamSum.maxConcurrent}）
   ➜  访问日志:   ${logSum.enabled ? `${logSum.dir}（保留 ${logSum.retentionDays} 天 | 统计接口: /api/admin/logs/summary）` : '已关闭'}
   ➜  健康检查:   http://${displayHost}:${PORT}/healthz
   ➜  静态目录:   ${staticHandler.distDir}${staticHandler.hasDist ? '' : '（未构建，仅 API 与信令可用）'}

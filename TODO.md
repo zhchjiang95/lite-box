@@ -145,14 +145,19 @@
 
 - [x] **磁力在线播放（`magnet-player`）**：配合独立后端 `server/routes/magnet.mjs` 实现 `magnet:?` 磁力链接与 `.torrent` 种子边下边播，内置省磁盘按需拉流（不自动全量下载、最大任务 LRU 淘汰、空闲 30 分钟自动删盘、一键清空缓存与盘符剩余空间实时监控）、原生 HTTP `206 Range` 拖动秒播、本机 `ffmpeg` 自动探测（支持 `remux` 轻转封装与 `H.264` 全兼容转码）、种子内/本地 `.srt/.vtt` 字幕加载、一键唤起 PotPlayer/VLC/IINA 外置播放器直链，以及外网部署强口令 `MAGNET_TOKEN` 鉴权与上行限速保护
   - *技术方案*：后端按需可选依赖 `webtorrent` + 本机 `ffmpeg` 流式管道 + `fs.statfsSync` 磁盘监控 + 前端 HTML5 `<video>` 与外置播放器协议唤起
-- [ ] **视频转 GIF 动图（`video-to-gif`）**：本地载入视频，框选时间段、设置帧率与尺寸，在浏览器中生成高画质调色板 GIF
-  - *技术方案*：`<video>` + Canvas 抽帧 + `gifenc`（轻量极速纯 JS GIF 编码器）
+- [x] **视频转 GIF 动图（`video-to-gif`）**：纯浏览器本地截取视频片段生成高画质调色板 GIF，内置可视化胶片双柄时间轴（支持左右手柄微调、整体平移与区间循环试播）、4 套画质预设（微信表情包/文档演示/高清动图/丝滑高帧）、5 种裁切比例（原比例/1:1/16:9/4:3/9:16）、倍速/倒放/往返回弹（Boomerang）、逐帧独立与全局共享双调色板、4×4 Bayer 有序抖动抗色带、表情包配文烧录及多版本体积画质对比
+  - *技术方案*：离屏 `<video>` 精确抽帧 + Canvas 2D 裁切与 Bayer 有序抖动 + `gifenc`（9 KB 极速纯 JS GIF 编码器）
 - [x] **视频逐帧截图提取（`video-frames`）**：纯浏览器本地精确到帧预览视频，支持键盘微调单帧（`←`/`→`、`24/25/30/60 fps` 步进）、倍速播放与时间码精确定位、一键截取高清帧/直接写入剪贴板、PNG/JPEG/WebP 与分辨率规格定制、可选烧录时间码水印、独立离屏按均匀张数/时间间隔/帧率批量抽帧打包 ZIP、高清大图灯箱预览及一键生成电影分镜缩略图拼图板（Contact Sheet）
 - [x] **音频剪切与格式转换（`audio-cutter`）**：基于 Web Audio API 的纯本地可视化音频剪辑工作台，支持音频及 MP4 视频音轨提取、双层峰值/RMS 波形图 1×–16× 缩放拖拽选区、保留选区与剪除中间段（接缝微渐变防爆音）双模式、淡入淡出斜坡可视化与实时预览试听、音量增益与 -0.5 dB 峰值归一化、采样率/单双声道转换及无损 16-bit WAV / 128–320 kbps MP3 导出
   - *技术方案*：`Web Audio API` (`OfflineAudioContext`) + 高清 Canvas 双层波形画布 + 纯 TS RIFF WAV 编码器 + `@breezystack/lamejs` 分块异步 MP3 编码
 - [x] **文字转语音与配音（`text-to-speech`）**：双引擎配音工作台，支持纯前端浏览器原生 `Web Speech API` 离线逐句高亮跟读，以及配合独立后端 `server/routes/tts.mjs` 调用免费高拟真 Edge Neural TTS（19 款精选普通话/方言/港台/英日韩主播音色，内置 24h 样音试听缓存）、长文按标点智能切片合成、多角色 `[角色名]` 对话剧本配音、纯内存拼接 MP3（零磁盘占用）及精确 MP3 帧长对齐的 `.srt` 字幕导出与实时点击跟读
   - *技术方案*：前端 `Web Speech API` + 多角色剧本解析器 + 后端按需可选依赖 `msedge-tts` + MP3 逐帧时长校准与 SRT 聚合器
-- [ ] **屏幕录制与摄像头拍照（`screen-recorder`）**：基于浏览器原生 `getDisplayMedia` 免安装录屏（支持麦克风混音），本地直出 WebM/MP4
+- [x] **视频与直播播放器（`stream-player`）**：万能在线视频与直播流播放器，支持 HLS (`.m3u8` 自适应多清晰度与直播追帧)、HTTP-FLV (`.flv`) / MPEG-TS (`.ts`)、原生 MP4/WebM 及本地视频拖放播放；内置 IPTV 频道列表导入（兼容标准 `.m3u/.m3u8`、`分组,#genre#` TXT 与在线订阅链接）、收藏与播放历史，配备实时码率/缓冲/掉帧监控 HUD、倍速、画中画、高清截图、90° 旋转与水平镜像、外挂 `.srt/.vtt` 字幕及快捷键；支持一键切换独立后端 `server/routes/stream.mjs` 跨域与防盗链代理（自动重写 M3U8 清单相对/绝对路径、自定义 Referer/UA、口令鉴权与 SSRF 私网防护）
+  - *技术方案*：`hls.js` + `mpegts.js`（按需动态加载）+ 零依赖 Node.js 流式跨域代理（`server/routes/stream.mjs`）+ M3U/TXT 解析器与 SRT→WebVTT 转换器
+- [x] **屏幕录制与摄像头拍照（`screen-recorder`）**：免安装纯本地录屏与拍摄工作台，支持纯屏幕录制（全屏/窗口/标签页）、屏幕+摄像头画中画讲解（后台 Web Worker 节拍器防切屏节流，实时可调圆形/圆角头像、四角位置、大小与镜像）及摄像头滤镜录像/拍照三模式；内置 Web Audio API 系统音+麦克风双轨混音与实时电平表、3 秒录制/拍照倒计时、暂停继续、录制中抓拍当前帧、自适应浏览器原生直出 MP4/WebM 及回放/照片画廊管理
+  - *技术方案*：原生 `getDisplayMedia` + `getUserMedia` + `Web Audio API` 双轨混音与 `AnalyserNode` 电平监测 + 后台 Worker 定时器驱动 Canvas 2D 画中画合成 + `MediaRecorder` 本地直出
+- [x] **歌曲信息解析与标签编辑（`audio-tag-editor`）**：纯浏览器本地歌曲元数据解析与无损标签工作台，支持解析 MP3 / FLAC / M4A / OGG / WAV 的专辑封面、内嵌/同步歌词与底层音质参数，支持 MP3（ID3v2.3 UTF-16）、FLAC（Vorbis Comment + Picture 块）与 M4A（`moov/udta/meta/ilst` + `stco/co64` 块偏移修正）三大格式零重编码无损写回；内置试听与 LRC 实时跟唱（点击歌词跳播、导入/导出 `.lrc`）、老旧 MP3 GBK 乱码一键修复及整张专辑批量改标签打包 ZIP
+  - *技术方案*：`music-metadata` 全格式解析 + 自研纯 TS MP3/FLAC/M4A 二进制无损写回引擎 + `fflate` 零级专辑打包
 
 ---
 
